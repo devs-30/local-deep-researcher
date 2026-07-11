@@ -274,7 +274,7 @@ describe("gradeSources node", () => {
       { researchTopic: "t" },
       { configurable: { maxWebResearchLoops: 0, gradeSources: false }, recursionLimit: 50 },
     );
-    // generateQuery + summarize + reflect only — gradeSources never asked for an LLM.
+    // generateQuery + summarize + reflect only - gradeSources never asked for an LLM.
     expect(llmCalls).toBe(3);
     expect(state.sourcesGathered.join("\n")).toContain("https://good.example/a");
     expect(state.sourcesGathered.join("\n")).toContain("https://offtopic.example/b");

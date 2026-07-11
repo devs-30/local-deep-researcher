@@ -35,7 +35,10 @@ generate query → web search → grade sources → summarize → reflect on gap
    total rounds. Use `--count-empty-loops` to restore the v0.2.x behavior where empty rounds
    consume budget. Note that MCP progress `loop` counts all attempts and can exceed `total` when
    free retries happen.
-4. **Summarize** - the new results are folded into a running summary.
+4. **Summarize** - the new results are folded into a running summary. Empty rounds skip this step
+   and go straight to reflection, which receives the list of failed queries with a do-not-repeat
+   instruction; a run where every round is empty produces an honestly empty report instead of a
+   summary hallucinated from empty context.
 5. **Reflect** - the LLM looks for knowledge gaps and produces a follow-up query.
 6. Steps 2–5 repeat until the configured loop count is reached (default **3** loops), then the
    summary is finalized into a markdown report with a deduplicated source list. (Like the Python

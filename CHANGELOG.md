@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- Empty rounds no longer invoke the summarizer on an empty context: `gradeSources`
+  routes them straight to reflection, and the reflection prompt lists the queries that
+  returned nothing with a do-not-repeat instruction. A fully empty run now produces an
+  honestly empty report instead of a summary hallucinated from empty context
+
 ## [0.4.0] - 2026-07-11
 
 ### Changed

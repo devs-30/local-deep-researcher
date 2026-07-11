@@ -78,7 +78,7 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      // sourcesGathered holds only sources kept by gradeSources — a fully rejected
+      // sourcesGathered holds only sources kept by gradeSources - a fully rejected
       // round 1 followed by a failed search is treated as "nothing to report on".
       if (state.sourcesGathered.length === 0) {
         throw new SearchFailedError(
