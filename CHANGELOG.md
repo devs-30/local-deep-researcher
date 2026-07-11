@@ -24,8 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Fetched pages are stripped of scripts, styles and page chrome (nav, footer, aside, forms,
-  inline SVG, comments) before markdown conversion - fewer junk tokens in the agent's
-  `fetch_page` output and in the workflow's `fetchFullPage` content
+  inline SVG, comments) before markdown conversion, and images are reduced to their alt text
+  (no URLs or base64 data URIs) - fewer junk tokens in the agent's `fetch_page` output and in
+  the workflow's `fetchFullPage` content, while brand names from logo walls stay readable
 
 Existing workflow behavior (`research()` / `local-deep-researcher <topic>`) is otherwise
 unchanged; agentic mode is purely additive

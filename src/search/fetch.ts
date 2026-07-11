@@ -2,6 +2,15 @@ import TurndownService from "turndown";
 
 const turndown = new TurndownService();
 turndown.remove(["script", "style", "noscript"]);
+// Image URLs (and especially base64 data URIs) are context junk for an LLM,
+// but alt texts carry real content - e.g. brand names on logo walls.
+turndown.addRule("altOnlyImages", {
+  filter: "img",
+  replacement: (_content, node) => {
+    const alt = (node as HTMLElement).getAttribute("alt")?.trim();
+    return alt ? alt : "";
+  },
+});
 
 // Elements that carry page chrome or code, not content. <header> is kept on
 // purpose: HTML5 articles legitimately wrap their own title in a <header>.

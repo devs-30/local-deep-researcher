@@ -50,6 +50,28 @@ describe("fetchRawContent", () => {
     expect(md).not.toContain("tracking comment");
   });
 
+  it("reduces images to their alt text and drops the rest", async () => {
+    const html = `<html><body><main>
+        <h1>Trusted by</h1>
+        <img src="https://cdn.example/nvidia.png" alt="NVIDIA">
+        <img src="data:image/png;base64,${"A".repeat(200)}">
+        <picture><source srcset="a.webp"><img src="b.jpg" alt="Klarna logo"></picture>
+        <p>text</p>
+      </main></body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () => new Response(html, { status: 200, headers: { "content-type": "text/html" } }),
+      ),
+    );
+    const md = await fetchRawContent("https://example.com");
+    expect(md).toContain("NVIDIA");
+    expect(md).toContain("Klarna logo");
+    expect(md).not.toContain("![");
+    expect(md).not.toContain("data:image");
+    expect(md).not.toContain("cdn.example");
+  });
+
   it("returns undefined on HTTP errors", async () => {
     vi.stubGlobal(
       "fetch",
