@@ -341,3 +341,131 @@ describe("gradeSources node", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("already graded"));
   });
 });
+
+describe("loop budget", () => {
+  const uniqueUrlSearch: SearchProvider = async (query) => [
+    {
+      title: `Result for ${query}`,
+      url: `https://example.com/${encodeURIComponent(query)}`,
+      content: `A long, substantive snippet about ${query} that clears the thin-content bar.`,
+    },
+  ];
+
+  it("does not charge the budget for a round rejected by grading", async () => {
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        '{"relevant": "no", "reason": "junk"}', // round 1: rejected -> free
+        "A summary.",
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+        '{"relevant": "yes", "reason": "ok"}', // round 2: productive
+        "A better summary.",
+        '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
+      ],
+    });
+    const warn = vi.fn();
+    const graph = buildGraph({
+      getLlm: () => llm,
+      getSearchProvider: () => uniqueUrlSearch,
+      retryDelayMs: 0,
+      warn,
+    });
+    const state = await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
+    );
+    // Budget 0 = 1 productive round; the rejected round was a free retry.
+    expect(state.researchLoopCount).toBe(2);
+    expect(state.productiveLoopCount).toBe(1);
+    expect(state.sourcesGathered).toHaveLength(1);
+    expect(state.sourcesGathered.join("\n")).toContain("q2");
+  });
+
+  it("exits cleanly at the hard cap when every round is empty", async () => {
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        '{"relevant": "no", "reason": "junk"}', // round 1
+        "A summary.",
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+        '{"relevant": "no", "reason": "junk"}', // round 2 (cap = 2 for max=0)
+        "A summary again.",
+        '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
+      ],
+    });
+    const graph = buildGraph({
+      getLlm: () => llm,
+      getSearchProvider: () => uniqueUrlSearch,
+      retryDelayMs: 0,
+      warn: () => {},
+    });
+    const state = await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
+    );
+    expect(state.researchLoopCount).toBe(2); // 2 * (0 + 1)
+    expect(state.productiveLoopCount).toBe(0);
+    expect(state.sourcesGathered).toHaveLength(0);
+    expect(state.runningSummary).toContain("## Summary");
+  });
+
+  it("countEmptyLoops=true restores v0.2.x counting", async () => {
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        '{"relevant": "no", "reason": "junk"}',
+        "A summary.",
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+      ],
+    });
+    const graph = buildGraph({
+      getLlm: () => llm,
+      getSearchProvider: () => uniqueUrlSearch,
+      retryDelayMs: 0,
+      warn: () => {},
+    });
+    const state = await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0, countEmptyLoops: true }, recursionLimit: 50 },
+    );
+    // Old semantics: the empty round consumed the whole budget.
+    expect(state.researchLoopCount).toBe(1);
+    expect(state.sourcesGathered).toHaveLength(0);
+  });
+
+  it("gives a failing search a free retry when grading is disabled", async () => {
+    let call = 0;
+    const flakySearch: SearchProvider = async (query) => {
+      call++;
+      // searchWithRetry (unmodified) already retries once internally, so round 1's
+      // single node execution issues 2 calls; both must fail for round 1 to be empty.
+      if (call <= 2) throw new Error("network down");
+      return uniqueUrlSearch(query, undefined as never);
+    };
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        "A summary.", // round 1 (empty round: summarize + reflect still run)
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+        "A better summary.", // round 2
+        '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
+      ],
+    });
+    const warn = vi.fn();
+    const graph = buildGraph({
+      getLlm: () => llm,
+      getSearchProvider: () => flakySearch,
+      retryDelayMs: 0,
+      warn,
+    });
+    const state = await graph.invoke(
+      // Seeded source keeps the SearchFailedError guard from hard-failing round 1.
+      { researchTopic: "t", sourcesGathered: ["* Seed : https://seed.example"] },
+      { configurable: { maxWebResearchLoops: 0, gradeSources: false }, recursionLimit: 50 },
+    );
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Web search failed"));
+    expect(state.researchLoopCount).toBe(2);
+    expect(state.productiveLoopCount).toBe(1);
+    expect(state.sourcesGathered.join("\n")).toContain("q2");
+  });
+});

@@ -107,6 +107,7 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
         webResearchResults: [
           deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
         ],
+        productiveLoopCount: state.productiveLoopCount + (results.length > 0 ? 1 : 0),
       };
     }
     const { kept: candidates, dropped } = applyHeuristics(results, {
@@ -163,6 +164,7 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
       webResearchResults: [
         deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
       ],
+      productiveLoopCount: state.productiveLoopCount + (kept.length > 0 ? 1 : 0),
     };
   }
 
@@ -222,8 +224,11 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     config?: RunnableConfig,
   ): "webResearch" | "finalizeSummary" {
     const cfg = ensureConfiguration(config);
-    // Port fidelity: <= means max=N yields N+1 search rounds, matching the original.
-    return state.researchLoopCount <= cfg.maxWebResearchLoops ? "webResearch" : "finalizeSummary";
+    // Hard cap on total rounds (productive + empty) so free retries can never loop forever.
+    if (state.researchLoopCount >= 2 * (cfg.maxWebResearchLoops + 1)) return "finalizeSummary";
+    // Port fidelity: <= means max=N yields N+1 productive rounds, matching the original.
+    const spent = cfg.countEmptyLoops ? state.researchLoopCount : state.productiveLoopCount;
+    return spent <= cfg.maxWebResearchLoops ? "webResearch" : "finalizeSummary";
   }
 
   return new StateGraph(SummaryStateAnnotation)

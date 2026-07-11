@@ -24,6 +24,10 @@ export const SummaryStateAnnotation = Annotation.Root({
     reducer: (_current, update) => update,
     default: () => 0,
   }),
+  productiveLoopCount: Annotation<number>({
+    reducer: (_current, update) => update,
+    default: () => 0,
+  }),
   runningSummary: Annotation<string>(),
 });
 
