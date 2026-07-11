@@ -1,0 +1,36 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+
+- `gradeSources` node: two-stage source filtering (credibility heuristics + per-source LLM
+  relevance check) between search and summarization. **Behavior change vs upstream:** ON by
+  default, adds one LLM call per gathered source; disable with `--no-grade-sources` /
+  `GRADE_SOURCES=false` / `gradeSources: false`
+- `--no-grade-sources` and `--blocklist <domains>` CLI flags; `grade_sources` and
+  `source_domain_blocklist` MCP tool inputs; `SOURCE_DOMAIN_BLOCKLIST` env var
+
+## [0.1.1] - 2026-07-11
+
+Accidental duplicate of v0.1.0 - no changes.
+
+## [0.1.0] - 2026-07-11
+
+### Added
+
+- Initial release: faithful LangGraph.js port of [langchain-ai/local-deep-researcher](https://github.com/langchain-ai/local-deep-researcher)
+- Four entry points: library (`research()`, `graph`), CLI (`npx @devs30/local-deep-researcher`), MCP stdio server (`mcp` subcommand), LangGraph Studio (`langgraph.json`)
+- LLM providers: Ollama (default, `llama3.2`) and OpenAI-compatible endpoints
+- Search providers: DuckDuckGo (default, keyless), Tavily, Perplexity, SearXNG
+- Configuration via zod schema with precedence: params/flags → env → defaults
+- Ollama pre-flight check with `ollama pull` hint
+- Ready-made Claude Code subagent (`.claude/agents/deep-researcher.md`)
+
+[0.1.1]: https://github.com/devs-30/local-deep-researcher/compare/v0.1.0...v0.1.1
+[0.1.0]: https://github.com/devs-30/local-deep-researcher/releases/tag/v0.1.0

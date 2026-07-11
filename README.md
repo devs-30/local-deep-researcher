@@ -21,11 +21,21 @@ generate query → web search → summarize → reflect on gaps
 
 1. **Generate query** - the LLM turns your topic into a targeted search query.
 2. **Web search** - the query is run against the configured search provider.
-3. **Summarize** - the new results are folded into a running summary.
-4. **Reflect** - the LLM looks for knowledge gaps and produces a follow-up query.
-5. Steps 2–4 repeat until the configured loop count is reached (default **3** loops), then the
+3. **Grade sources** - results are filtered in two stages: deterministic credibility heuristics
+   (domain blocklist, thin/empty content, cross-loop URL dedup — no LLM cost), then a per-source
+   binary LLM relevance check ("when in doubt, keep"). Rejected sources never reach the summary or
+   final bibliography; every drop is logged to stderr with a reason. If a whole round is rejected,
+   the research loop simply tries a different query next iteration.
+4. **Summarize** - the new results are folded into a running summary.
+5. **Reflect** - the LLM looks for knowledge gaps and produces a follow-up query.
+6. Steps 2–5 repeat until the configured loop count is reached (default **3** loops), then the
    summary is finalized into a markdown report with a deduplicated source list. (Like the Python
    original, `--max-loops N` performs N+1 search rounds: the loop runs while the counter is ≤ N.)
+
+> **Behavior change vs the Python original (`ollama-deep-researcher`):** source grading is ON by
+> default and adds one LLM call per gathered source. Disable it with `--no-grade-sources` (CLI),
+> `GRADE_SOURCES=false` (env), or `gradeSources: false` (library/MCP) to restore upstream-identical
+> behavior.
 
 ## Quickstart (CLI)
 
@@ -39,19 +49,21 @@ needed - the default search provider is DuckDuckGo.
 
 ### CLI flags
 
-| Flag                  | Description                                                                  |
-| --------------------- | ---------------------------------------------------------------------------- |
-| `--max-loops <n>`     | Research loops (default `3`; `N` yields `N+1` search rounds)                 |
-| `--provider <name>`   | `ollama` \| `openai_compatible` (default `ollama`)                           |
-| `--model <name>`      | Model name (default `llama3.2`, env `LOCAL_LLM`)                             |
-| `--base-url <url>`    | LLM base URL (Ollama or OpenAI-compatible endpoint)                          |
-| `--search-api <name>` | `duckduckgo` \| `tavily` \| `perplexity` \| `searxng` (default `duckduckgo`) |
-| `--fetch-full-page`   | Fetch full page content for each source                                      |
-| `-o, --output <file>` | Write the report to a file instead of stdout                                 |
-| `--json`              | Output `{"summary", "sources"}` JSON instead of markdown                     |
-| `-q, --quiet`         | Suppress progress output on stderr                                           |
-| `-h, --help`          | Show help                                                                    |
-| `-v, --version`       | Show version                                                                 |
+| Flag                    | Description                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------- |
+| `--max-loops <n>`       | Research loops (default `3`; `N` yields `N+1` search rounds)                 |
+| `--provider <name>`     | `ollama` \| `openai_compatible` (default `ollama`)                           |
+| `--model <name>`        | Model name (default `llama3.2`, env `LOCAL_LLM`)                             |
+| `--base-url <url>`      | LLM base URL (Ollama or OpenAI-compatible endpoint)                          |
+| `--search-api <name>`   | `duckduckgo` \| `tavily` \| `perplexity` \| `searxng` (default `duckduckgo`) |
+| `--fetch-full-page`     | Fetch full page content for each source                                      |
+| `--no-grade-sources`    | Disable source grading (credibility + relevance filter)                      |
+| `--blocklist <domains>` | Comma-separated domains to always reject                                     |
+| `-o, --output <file>`   | Write the report to a file instead of stdout                                 |
+| `--json`                | Output `{"summary", "sources"}` JSON instead of markdown                     |
+| `-q, --quiet`           | Suppress progress output on stderr                                           |
+| `-h, --help`            | Show help                                                                    |
+| `-v, --version`         | Show version                                                                 |
 
 `local-deep-researcher mcp` starts the MCP stdio server instead of running a one-off research
 task - see [Use as an MCP server](#use-as-an-mcp-server-claude-code--codex) below.
@@ -142,6 +154,8 @@ precedence over environment variables, which take precedence over the defaults b
 | `searchApi`               | `SEARCH_API`                 | `duckduckgo`                                          |
 | `maxWebResearchLoops`     | `MAX_WEB_RESEARCH_LOOPS`     | `3`                                                   |
 | `fetchFullPage`           | `FETCH_FULL_PAGE`            | `false`                                               |
+| `gradeSources`            | `GRADE_SOURCES`              | `true`                                                |
+| `sourceDomainBlocklist`   | `SOURCE_DOMAIN_BLOCKLIST`    | (empty)                                               |
 | `stripThinkingTokens`     | `STRIP_THINKING_TOKENS`      | `true`                                                |
 | `tavilyApiKey`            | `TAVILY_API_KEY`             | _(none, required if `searchApi=tavily`)_              |
 | `perplexityApiKey`        | `PERPLEXITY_API_KEY`         | _(none, required if `searchApi=perplexity`)_          |
