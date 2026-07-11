@@ -8,7 +8,8 @@ const fakeSearch: SearchProvider = async (query) => [
   {
     title: `Result for ${query}`,
     url: `https://example.com/${encodeURIComponent(query)}`,
-    content: "snippet",
+    // Long enough to clear applyHeuristics' thin-content bar (MIN_CONTENT_CHARS = 50).
+    content: "A snippet with enough detail to clear the minimum content length threshold.",
   },
 ];
 

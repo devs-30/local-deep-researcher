@@ -2,6 +2,7 @@ import { END, START, StateGraph } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
 import { ensureConfiguration } from "./configuration";
+import { applyHeuristics, parseBlocklist } from "./grade";
 import {
   contentToString,
   extractJsonField,
@@ -96,12 +97,66 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
   async function gradeSources(state: SummaryState, config?: RunnableConfig) {
     const cfg = ensureConfiguration(config);
     const results = state.pendingResults;
+    if (!cfg.gradeSources) {
+      // Pass-through: byte-identical to pre-grading behavior, zero LLM calls.
+      return {
+        pendingResults: [],
+        sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
+        webResearchResults: [
+          deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
+        ],
+      };
+    }
+    const { kept: candidates, dropped } = applyHeuristics(results, {
+      blocklist: parseBlocklist(cfg.sourceDomainBlocklist),
+      fetchFullPage: cfg.fetchFullPage,
+      gradedUrls: new Set(state.gradedUrls),
+    });
+    for (const { result, reason } of dropped) {
+      deps.warn(`gradeSources: dropped ${result.url} (${reason})`);
+    }
+    const llm = deps.getLlm(cfg, { jsonMode: true });
+    const kept: SearchResult[] = [];
+    for (const source of candidates) {
+      const excerpt = (source.rawContent ?? source.content).slice(0, MAX_TOKENS_PER_SOURCE * 4);
+      try {
+        const result = await llm.invoke([
+          new SystemMessage(
+            prompts.sourceGraderInstructions({
+              researchTopic: state.researchTopic,
+              searchQuery: state.searchQuery,
+            }),
+          ),
+          new HumanMessage(
+            `<SOURCE>\nTitle: ${source.title}\nURL: ${source.url}\nContent: ${excerpt}\n</SOURCE>\n\n${prompts.jsonModeGraderInstructions}`,
+          ),
+        ]);
+        let content = contentToString(result.content);
+        if (cfg.stripThinkingTokens) content = stripThinkingTokens(content);
+        const verdict = extractJsonField(content, "relevant");
+        // Fail-open: an unparsable verdict keeps the source (lenient by design).
+        if (verdict === undefined || verdict.trim().toLowerCase().startsWith("y")) {
+          kept.push(source);
+        } else {
+          deps.warn(`gradeSources: dropped ${source.url} (not relevant to the query)`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        deps.warn(`gradeSources: grader failed for ${source.url}, keeping source: ${message}`);
+        kept.push(source);
+      }
+    }
+    if (results.length > 0 && kept.length === 0) {
+      deps.warn(
+        `gradeSources: all ${results.length} sources rejected this round; continuing with an empty round`,
+      );
+    }
     return {
       pendingResults: [],
       gradedUrls: results.map((r) => r.url),
-      sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
+      sourcesGathered: kept.length > 0 ? [formatSources(kept)] : [],
       webResearchResults: [
-        deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
+        deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
       ],
     };
   }
