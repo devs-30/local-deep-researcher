@@ -26,7 +26,7 @@ generate query → web search → grade sources → summarize → reflect on gap
 1. **Generate query** - the LLM turns your topic into a targeted search query.
 2. **Web search** - the query is run against the configured search provider.
 3. **Grade sources** - results are filtered in two stages: deterministic credibility heuristics
-   (domain blocklist, thin/empty content, cross-loop URL dedup — no LLM cost), then a per-source
+   (domain blocklist, thin/empty content, cross-loop URL dedup - no LLM cost), then a per-source
    binary LLM relevance check ("when in doubt, keep"). Rejected sources never reach the summary or
    final bibliography; every drop is logged to stderr with a reason. If a whole round is rejected,
    the research loop tries a different query next iteration - these empty rounds (all sources
@@ -142,10 +142,58 @@ interface ResearchReport {
 precedence over environment variables. `deps` lets you override the LLM factory or search
 provider - mainly useful for testing.
 
+## Agentic mode
+
+Alongside the fixed research loop above, this repo also ships an agentic mode: a single LLM agent
+decides its own searches, page fetches and notes in a tool-calling loop, instead of following the
+generate-query -> search -> grade -> summarize -> reflect steps. Once the agent stops (or hits the
+step cap), a separate one-shot LLM call writes the report from the gathered notes; the sources
+section is built deterministically from the notes' source URLs.
+
+Agentic mode requires an Ollama model with tool calling (e.g. `qwen3`) - the default `gemma4:e4b`
+does not support tools. A preflight check fails fast with a hint to set `--agent-model` /
+`AGENT_LLM` if the configured model can't call tools.
+
+```bash
+ollama pull qwen3
+npx @devs30/local-deep-researcher agent "history of liquid rocket engines" --agent-model qwen3 --max-steps 15
+```
+
+| Flag                   | Description                                                                 |
+| ---------------------- | --------------------------------------------------------------------------- |
+| `--max-steps <n>`      | Max model calls in the agent loop (default `20`, env `MAX_AGENT_STEPS`)     |
+| `--agent-model <name>` | Tool-calling model for the agent loop (default: `--model`, env `AGENT_LLM`) |
+
+The MCP server exposes a second tool alongside `deep_research`: `deep_research_agent`, which takes
+`topic` (required), and optional `max_steps`, `agent_llm`, `search_api` and
+`source_domain_blocklist` parameters.
+
+```ts
+import { researchAgentic } from "@devs30/local-deep-researcher";
+
+const report = await researchAgentic("history of liquid rocket engines", {
+  agentLlm: "qwen3",
+  maxAgentSteps: 15,
+});
+
+console.log(report.markdown); // same ResearchReport shape as research()
+```
+
+`researchAgentic(topic, options?, hooks?, deps?)` returns the same `ResearchReport` shape as
+`research()`. `agentLlm` falls back to `localLlm` when unset; `maxAgentSteps` caps the number of
+model calls in the loop (default `20`) - when the cap is hit, the report is written from whatever
+notes were gathered so far.
+
+Existing workflow behavior (`research()` / `local-deep-researcher <topic>`) is unchanged;
+agentic mode is purely additive.
+
 ## LangGraph Studio
 
-This repo ships a `langgraph.json` pointing at the compiled graph (`src/graph.ts:graph`), so you
-can open it directly in LangGraph Studio from the repo root:
+This repo ships a `langgraph.json` with two graphs, so you can open them directly in LangGraph
+Studio from the repo root:
+
+- `local_deep_researcher` - the fixed research loop (`src/graph.ts:graph`)
+- `local_deep_researcher_agent` - agentic mode (`src/agent.ts:agenticGraph`)
 
 ```bash
 npx @langchain/langgraph-cli dev
@@ -161,11 +209,13 @@ precedence over environment variables, which take precedence over the defaults b
 | ------------------------- | ---------------------------- | ----------------------------------------------------- |
 | `llmProvider`             | `LLM_PROVIDER`               | `ollama`                                              |
 | `localLlm`                | `LOCAL_LLM`                  | `gemma4:e4b`                                          |
+| `agentLlm`                | `AGENT_LLM`                  | _(none, falls back to `localLlm`)_                    |
 | `ollamaBaseUrl`           | `OLLAMA_BASE_URL`            | `http://localhost:11434`                              |
 | `openaiCompatibleBaseUrl` | `OPENAI_COMPATIBLE_BASE_URL` | _(none, required if `llmProvider=openai_compatible`)_ |
 | `openaiCompatibleApiKey`  | `OPENAI_COMPATIBLE_API_KEY`  | _(none)_                                              |
 | `searchApi`               | `SEARCH_API`                 | `duckduckgo`                                          |
 | `maxWebResearchLoops`     | `MAX_WEB_RESEARCH_LOOPS`     | `3`                                                   |
+| `maxAgentSteps`           | `MAX_AGENT_STEPS`            | `20`                                                  |
 | `fetchFullPage`           | `FETCH_FULL_PAGE`            | `false`                                               |
 | `gradeSources`            | `GRADE_SOURCES`              | `true`                                                |
 | `sourceDomainBlocklist`   | `SOURCE_DOMAIN_BLOCKLIST`    | (empty)                                               |

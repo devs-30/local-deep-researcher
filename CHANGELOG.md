@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-07-11
+
+### Added
+
+- Agentic mode: a single LLM agent decides its own searches, page fetches and notes in a
+  tool-calling loop; the report is then written from the notes by a separate one-shot LLM call,
+  with the sources section built deterministically. New CLI subcommand `agent` (`--max-steps`,
+  `--agent-model`), new MCP tool `deep_research_agent`, new library function `researchAgentic()`,
+  and a second Studio graph `local_deep_researcher_agent` (`src/agent.ts:agenticGraph`)
+- New config `agentLlm` (env `AGENT_LLM`, falls back to `localLlm` when unset) and
+  `maxAgentSteps` (env `MAX_AGENT_STEPS`, default `20`) - caps model calls in the agent loop; on
+  the cap the report is written from the notes gathered so far
+- Preflight check that fails fast when the configured agent model does not support tool calling,
+  with a hint to set `--agent-model` / `AGENT_LLM` (e.g. `qwen3`)
+- New dependency: `langchain@^1`
+
+Existing workflow behavior (`research()` / `local-deep-researcher <topic>`) is unchanged;
+agentic mode is purely additive
+
 ## [0.5.0] - 2026-07-11
 
 ### Changed
@@ -66,7 +85,8 @@ Accidental duplicate of v0.1.0 - no changes.
 - Ollama pre-flight check with `ollama pull` hint
 - Ready-made Claude Code subagent (`.claude/agents/deep-researcher.md`)
 
-[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.5.0...HEAD
+[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.2.1...v0.3.0

@@ -2,7 +2,8 @@
   "node_version": "20",
   "dependencies": ["."],
   "graphs": {
-    "local_deep_researcher": "./src/graph.ts:graph"
+    "local_deep_researcher": "./src/graph.ts:graph",
+    "local_deep_researcher_agent": "./src/agent.ts:agenticGraph"
   },
   "env": ".env"
 }
