@@ -78,6 +78,8 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
       );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
+      // sourcesGathered holds only sources kept by gradeSources — a fully rejected
+      // round 1 followed by a failed search is treated as "nothing to report on".
       if (state.sourcesGathered.length === 0) {
         throw new SearchFailedError(
           `Web search failed with no sources gathered yet (${cfg.searchApi}): ${message}`,
@@ -118,7 +120,10 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     const llm = deps.getLlm(cfg, { jsonMode: true });
     const kept: SearchResult[] = [];
     for (const source of candidates) {
-      const excerpt = (source.rawContent ?? source.content).slice(0, MAX_TOKENS_PER_SOURCE * 4);
+      const excerpt = (source.rawContent?.trim() || source.content).slice(
+        0,
+        MAX_TOKENS_PER_SOURCE * 4,
+      );
       try {
         const result = await llm.invoke([
           new SystemMessage(
@@ -134,11 +139,11 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
         let content = contentToString(result.content);
         if (cfg.stripThinkingTokens) content = stripThinkingTokens(content);
         const verdict = extractJsonField(content, "relevant");
-        // Fail-open: an unparsable verdict keeps the source (lenient by design).
-        if (verdict === undefined || verdict.trim().toLowerCase().startsWith("y")) {
-          kept.push(source);
-        } else {
+        // Fail-open: only an explicit "no" drops the source (lenient by design).
+        if (verdict !== undefined && verdict.trim().toLowerCase().startsWith("n")) {
           deps.warn(`gradeSources: dropped ${source.url} (not relevant to the query)`);
+        } else {
+          kept.push(source);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

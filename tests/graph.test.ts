@@ -143,6 +143,7 @@ describe("gradeSources node", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("offtopic.example"));
     expect(state.gradedUrls).toContain("https://good.example/a");
     expect(state.gradedUrls).toContain("https://offtopic.example/b");
+    expect(state.runningSummary).not.toContain("offtopic.example");
   });
 
   it("fails open when the grader verdict is unparsable", async () => {
@@ -166,6 +167,30 @@ describe("gradeSources node", () => {
       { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
     );
     expect(state.sourcesGathered.join("\n")).toContain("https://good.example/a");
+  });
+
+  it('fails open on a non-canonical verdict string like "true"', async () => {
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q", "rationale": "r"}',
+        '{"relevant": "true", "reason": "non-canonical but affirmative"}',
+        '{"relevant": "no", "reason": "off topic"}',
+        "A summary.",
+        '{"knowledge_gap": "g", "follow_up_query": "f"}',
+      ],
+    });
+    const graph = buildGraph({
+      getLlm: () => llm,
+      getSearchProvider: () => twoSources,
+      retryDelayMs: 0,
+      warn: () => {},
+    });
+    const state = await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
+    );
+    expect(state.sourcesGathered.join("\n")).toContain("https://good.example/a");
+    expect(state.sourcesGathered.join("\n")).not.toContain("https://offtopic.example/b");
   });
 
   it("fails open and warns when the grader LLM call throws", async () => {

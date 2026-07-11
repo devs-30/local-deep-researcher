@@ -65,7 +65,7 @@ export function applyHeuristics(
       dropped.push({ result, reason: "blocklisted domain" });
       continue;
     }
-    const bestText = (result.rawContent?.trim() || result.content.trim()) ?? "";
+    const bestText = result.rawContent?.trim() || result.content.trim();
     if (bestText.length < MIN_CONTENT_CHARS) {
       dropped.push({ result, reason: "thin content" });
       continue;

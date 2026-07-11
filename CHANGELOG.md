@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `gradeSources` node: two-stage source filtering (credibility heuristics + per-source LLM
   relevance check) between search and summarization. **Behavior change vs upstream:** ON by
-  default, adds one LLM call per gathered source; disable with `--no-grade-sources` /
+  default, adds up to one LLM call per gathered source; disable with `--no-grade-sources` /
   `GRADE_SOURCES=false` / `gradeSources: false`
 - `--no-grade-sources` and `--blocklist <domains>` CLI flags; `grade_sources` and
   `source_domain_blocklist` MCP tool inputs; `SOURCE_DOMAIN_BLOCKLIST` env var

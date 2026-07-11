@@ -12,11 +12,11 @@ LangGraph Studio graph.
 The assistant runs a small research loop as a LangGraph state machine:
 
 ```
-generate query → web search → summarize → reflect on gaps
-                     ^                          |
-                     └──────── repeat ──────────┘
-                                                  |
-                                          finalize summary
+generate query → web search → grade sources → summarize → reflect on gaps
+                     ^                                          |
+                     └───────────────── repeat ─────────────────┘
+                                                                  |
+                                                          finalize summary
 ```
 
 1. **Generate query** - the LLM turns your topic into a targeted search query.
@@ -33,7 +33,7 @@ generate query → web search → summarize → reflect on gaps
    original, `--max-loops N` performs N+1 search rounds: the loop runs while the counter is ≤ N.)
 
 > **Behavior change vs the Python original (`ollama-deep-researcher`):** source grading is ON by
-> default and adds one LLM call per gathered source. Disable it with `--no-grade-sources` (CLI),
+> default and adds up to one LLM call per gathered source. Disable it with `--no-grade-sources` (CLI),
 > `GRADE_SOURCES=false` (env), or `gradeSources: false` (library/MCP) to restore upstream-identical
 > behavior.
 
