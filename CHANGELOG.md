@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-07-11
 
 ### Changed
 
@@ -57,7 +57,8 @@ Accidental duplicate of v0.1.0 - no changes.
 - Ollama pre-flight check with `ollama pull` hint
 - Ready-made Claude Code subagent (`.claude/agents/deep-researcher.md`)
 
-[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/devs-30/local-deep-researcher/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.1.1...v0.2.0
