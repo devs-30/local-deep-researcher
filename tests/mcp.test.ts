@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMcpServer } from "../src/mcp";
@@ -49,5 +49,19 @@ describe("MCP server", () => {
     const content = result.content as Array<{ type: string; text: string }>;
     expect(result.isError).toBe(true);
     expect(content[0].text).toContain("Ollama exploded");
+  });
+
+  it("forwards grade_sources and source_domain_blocklist to the research configurable", async () => {
+    const spy = vi.fn(fakeResearch);
+    const client = await connectedClient({ researchFn: spy, preflight: async () => {} });
+    await client.callTool({
+      name: "deep_research",
+      arguments: { topic: "t", grade_sources: false, source_domain_blocklist: "spam.example" },
+    });
+    expect(spy).toHaveBeenCalledWith(
+      "t",
+      expect.objectContaining({ gradeSources: false, sourceDomainBlocklist: "spam.example" }),
+      expect.anything(),
+    );
   });
 });

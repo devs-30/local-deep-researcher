@@ -30,12 +30,23 @@ export function createMcpServer(deps: McpDeps = {}): McpServer {
         topic: z.string().describe("The research topic or question"),
         max_loops: z.number().int().min(0).optional().describe("Research loops (default 3)"),
         search_api: z.enum(["duckduckgo", "tavily", "perplexity", "searxng"]).optional(),
+        grade_sources: z
+          .boolean()
+          .optional()
+          .describe("Grade sources for credibility and relevance before summarizing (default true)"),
+        source_domain_blocklist: z
+          .string()
+          .optional()
+          .describe("Comma-separated domains to always reject"),
       },
     },
-    async ({ topic, max_loops, search_api }, extra) => {
+    async ({ topic, max_loops, search_api, grade_sources, source_domain_blocklist }, extra) => {
       const configurable: Record<string, unknown> = {};
       if (max_loops !== undefined) configurable.maxWebResearchLoops = max_loops;
       if (search_api !== undefined) configurable.searchApi = search_api;
+      if (grade_sources !== undefined) configurable.gradeSources = grade_sources;
+      if (source_domain_blocklist !== undefined)
+        configurable.sourceDomainBlocklist = source_domain_blocklist;
       try {
         const cfg = ensureConfiguration({ configurable });
         validateConfiguration(cfg);
