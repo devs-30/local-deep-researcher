@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import * as prompts from "../src/prompts";
 import {
   getCurrentDate,
   jsonModeGraderInstructions,
@@ -80,5 +81,28 @@ describe("reflectionInstructions failed queries", () => {
     expect(text).toContain("quantum cats");
     expect(text).toContain("qubit dogs");
     expect(text.toLowerCase()).toContain("do not repeat");
+  });
+});
+
+describe("agentInstructions", () => {
+  it("embeds topic, date and step budget", () => {
+    const text = prompts.agentInstructions({
+      researchTopic: "quantum computing",
+      currentDate: "January 1, 2026",
+      maxAgentSteps: 12,
+    });
+    expect(text).toContain("quantum computing");
+    expect(text).toContain("January 1, 2026");
+    expect(text).toContain("12");
+    expect(text).toContain("web_search");
+    expect(text).toContain("fetch_page");
+    expect(text).toContain("take_note");
+  });
+});
+
+describe("reportWriterInstructions", () => {
+  it("asks for a report without a sources section", () => {
+    expect(prompts.reportWriterInstructions).toContain("report");
+    expect(prompts.reportWriterInstructions.toLowerCase()).toContain("do not");
   });
 });
