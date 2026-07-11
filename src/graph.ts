@@ -195,7 +195,12 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     const cfg = ensureConfiguration(config);
     const llm = deps.getLlm(cfg, { jsonMode: true });
     const result = await llm.invoke([
-      new SystemMessage(prompts.reflectionInstructions({ researchTopic: state.researchTopic })),
+      new SystemMessage(
+        prompts.reflectionInstructions({
+          researchTopic: state.researchTopic,
+          failedQueries: state.failedQueries,
+        }),
+      ),
       new HumanMessage(
         `${prompts.jsonModeReflectionInstructions}\n\nReflect on our existing knowledge: \n === \n ${state.runningSummary ?? ""}, \n === \n And now identify a knowledge gap and generate a follow-up web search query:`,
       ),

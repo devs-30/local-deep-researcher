@@ -70,7 +70,21 @@ Think carefully about the provided Context first. Then generate a summary of the
 </Task>
 `;
 
-export function reflectionInstructions(params: { researchTopic: string }): string {
+export function reflectionInstructions(params: {
+  researchTopic: string;
+  failedQueries?: string[];
+}): string {
+  const failed = params.failedQueries ?? [];
+  const failedBlock =
+    failed.length > 0
+      ? `
+
+<FAILED_QUERIES>
+These queries returned no usable sources:
+${failed.map((query) => `- ${query}`).join("\n")}
+Propose a meaningfully different follow-up query. Do not repeat them.
+</FAILED_QUERIES>`
+      : "";
   return `You are an expert research assistant analyzing a summary about ${params.researchTopic}.
 
 <GOAL>
@@ -81,7 +95,7 @@ export function reflectionInstructions(params: { researchTopic: string }): strin
 
 <REQUIREMENTS>
 Ensure the follow-up question is self-contained and includes necessary context for web search.
-</REQUIREMENTS>`;
+</REQUIREMENTS>${failedBlock}`;
 }
 
 export const jsonModeReflectionInstructions = `<FORMAT>

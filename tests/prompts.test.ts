@@ -62,3 +62,23 @@ describe("jsonModeGraderInstructions", () => {
     expect(jsonModeGraderInstructions).toContain('"no"');
   });
 });
+
+describe("reflectionInstructions failed queries", () => {
+  it("is unchanged when no failed queries are given", () => {
+    const base = reflectionInstructions({ researchTopic: "t" });
+    const withEmpty = reflectionInstructions({ researchTopic: "t", failedQueries: [] });
+    expect(withEmpty).toBe(base);
+    expect(base).not.toContain("FAILED_QUERIES");
+  });
+
+  it("lists failed queries with a do-not-repeat instruction", () => {
+    const text = reflectionInstructions({
+      researchTopic: "t",
+      failedQueries: ["quantum cats", "qubit dogs"],
+    });
+    expect(text).toContain("<FAILED_QUERIES>");
+    expect(text).toContain("quantum cats");
+    expect(text).toContain("qubit dogs");
+    expect(text.toLowerCase()).toContain("do not repeat");
+  });
+});

@@ -530,4 +530,39 @@ describe("loop budget", () => {
     expect(state.lastRoundEmpty).toBe(true);
     expect(state.webResearchResults).toHaveLength(0);
   });
+
+  it("passes failed queries to the reflection prompt", async () => {
+    const inner = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        '{"relevant": "no", "reason": "junk"}',
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+        '{"relevant": "yes", "reason": "ok"}',
+        "A summary.",
+        '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
+      ],
+    });
+    const systemPrompts: string[] = [];
+    const recordingLlm = {
+      invoke: async (messages: Array<{ content: unknown }>) => {
+        systemPrompts.push(String(messages[0]?.content ?? ""));
+        return inner.invoke(messages as never);
+      },
+    } as unknown as BaseChatModel;
+    const graph = buildGraph({
+      getLlm: () => recordingLlm,
+      getSearchProvider: () => uniqueUrlSearch,
+      retryDelayMs: 0,
+      warn: () => {},
+    });
+    await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
+    );
+    // The reflection after the empty round 1 must see the failed query "q1".
+    const reflectionPrompts = systemPrompts.filter((p) => p.includes("expert research assistant"));
+    expect(reflectionPrompts.length).toBeGreaterThan(0);
+    expect(reflectionPrompts[0]).toContain("<FAILED_QUERIES>");
+    expect(reflectionPrompts[0]).toContain("q1");
+  });
 });
