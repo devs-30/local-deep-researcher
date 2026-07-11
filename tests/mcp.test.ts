@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createMcpServer } from "../src/mcp";
-import type { research } from "../src/research";
+import type { research, researchAgentic } from "../src/research";
 
 const fakeResearch = (async (topic: string) => ({
   summary: `Summary of ${topic}`,
@@ -16,6 +16,29 @@ async function connectedClient(deps: Parameters<typeof createMcpServer>[0]) {
   const client = new Client({ name: "test-client", version: "0.0.0" });
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
   return client;
+}
+
+async function listRegisteredTools() {
+  const client = await connectedClient({
+    preflight: async () => {},
+    preflightAgentModel: async () => {},
+  });
+  const tools = await client.listTools();
+  return tools.tools;
+}
+
+async function callTool(
+  name: string,
+  args: Record<string, unknown>,
+  deps: Parameters<typeof createMcpServer>[0] = {},
+) {
+  const client = await connectedClient({
+    preflight: async () => {},
+    preflightAgentModel: async () => {},
+    ...deps,
+  });
+  const result = await client.callTool({ name, arguments: args });
+  return result as unknown as { isError?: boolean; content: Array<{ type: string; text: string }> };
 }
 
 describe("MCP server", () => {
@@ -77,5 +100,45 @@ describe("MCP server", () => {
       expect.objectContaining({ countEmptyLoops: true }),
       expect.anything(),
     );
+  });
+});
+
+describe("deep_research_agent tool", () => {
+  it("is registered with the expected input schema", async () => {
+    const tools = await listRegisteredTools();
+    const agentTool = tools.find((t) => t.name === "deep_research_agent");
+    expect(agentTool).toBeDefined();
+    expect(agentTool?.inputSchema.properties).toHaveProperty("topic");
+    expect(agentTool?.inputSchema.properties).toHaveProperty("max_steps");
+    expect(agentTool?.inputSchema.properties).toHaveProperty("agent_llm");
+  });
+
+  it("maps snake_case inputs to configurable and returns markdown", async () => {
+    const researchAgenticFn = vi.fn(async () => ({
+      summary: "s",
+      sources: [{ title: "T", url: "https://t.example" }],
+      markdown: "## Summary\nbody",
+    })) as unknown as typeof researchAgentic;
+    const result = await callTool(
+      "deep_research_agent",
+      { topic: "alpha", max_steps: 5, agent_llm: "qwen3" },
+      { researchAgenticFn },
+    );
+    expect(researchAgenticFn).toHaveBeenCalledWith(
+      "alpha",
+      expect.objectContaining({ maxAgentSteps: 5, agentLlm: "qwen3" }),
+      expect.anything(),
+    );
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).toContain("## Summary");
+  });
+
+  it("returns isError on failure", async () => {
+    const researchAgenticFn = vi.fn(async () => {
+      throw new Error("agent blew up");
+    }) as unknown as typeof researchAgentic;
+    const result = await callTool("deep_research_agent", { topic: "alpha" }, { researchAgenticFn });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("agent blew up");
   });
 });
