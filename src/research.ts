@@ -56,7 +56,7 @@ export async function research(
     {
       configurable: options,
       streamMode: "updates",
-      recursionLimit: 20 + cfg.maxWebResearchLoops * 5,
+      recursionLimit: 20 + cfg.maxWebResearchLoops * 10,
     },
   );
 

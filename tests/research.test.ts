@@ -59,4 +59,31 @@ describe("research", () => {
       /TAVILY_API_KEY/,
     );
   });
+
+  it("completes an all-empty run at the hard cap without hitting the recursion limit", async () => {
+    // Every getLlm call returns a fresh fake whose single response is a "no" verdict.
+    // generateQuery/reflect fall back (topic / "Tell me more..."), the grader rejects
+    // round 1, and later rounds die on cross-loop dedup - so every round is empty.
+    const report = await research(
+      "empty topic",
+      // max=4: cap = 10 rounds = 42 supersteps; fails the old limit (40), fits the new (60).
+      { maxWebResearchLoops: 4 },
+      {},
+      {
+        getLlm: () => new FakeListChatModel({ responses: ['{"relevant": "no", "reason": "junk"}'] }),
+        getSearchProvider: () => async () => [
+          {
+            title: "Same page",
+            url: "https://same.example/page",
+            content: "A long, substantive snippet that clears the thin-content bar easily.",
+          },
+        ],
+        retryDelayMs: 0,
+        warn: () => {},
+      },
+    );
+    // Cap = 2 * (4 + 1) = 10 rounds, all empty: report exists, bibliography is empty.
+    expect(report.sources).toHaveLength(0);
+    expect(report.markdown).toContain("## Summary");
+  });
 });
