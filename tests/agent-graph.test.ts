@@ -129,15 +129,69 @@ describe("agentic graph", () => {
     );
   });
 
-  it("emits tool events through deps.onToolEvent", async () => {
-    const events: string[] = [];
+  it("emits tool events through deps.onToolEvent with the model-call number", async () => {
+    const events: Array<[string, number | undefined]> = [];
     const model = new FakeToolCallingModel([
       searchCall("c1", "alpha"),
       noteCall("c2", "Alpha does X", "https://alpha.example/1", "Alpha"),
       new AIMessage("Done."),
     ]);
-    const graph = buildAgenticGraph({ ...deps(model), onToolEvent: (p) => events.push(p) });
+    const graph = buildAgenticGraph({
+      ...deps(model),
+      onToolEvent: (p, modelCall) => events.push([p, modelCall]),
+    });
     await graph.invoke({ researchTopic: "alpha systems" }, CONFIG);
-    expect(events).toEqual(["searching", "noting"]);
+    expect(events).toEqual([
+      ["searching", 1],
+      ["noting", 2],
+    ]);
+  });
+
+  it("reports the same model-call number for tools batched in one turn", async () => {
+    // Models like gemma may issue several tool calls per turn; the budget is
+    // model calls, so all tools from one turn must carry the same number.
+    const events: Array<[string, number | undefined]> = [];
+    const model = new FakeToolCallingModel([
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          { id: "c1", name: "web_search", args: { query: "alpha" } },
+          {
+            id: "c2",
+            name: "take_note",
+            args: { note: "Alpha does X", source_url: "https://alpha.example/1" },
+          },
+        ],
+      }),
+      new AIMessage("Done."),
+    ]);
+    const graph = buildAgenticGraph({
+      ...deps(model),
+      onToolEvent: (p, modelCall) => events.push([p, modelCall]),
+    });
+    await graph.invoke({ researchTopic: "alpha systems" }, CONFIG);
+    expect(events).toEqual([
+      ["searching", 1],
+      ["noting", 1],
+    ]);
+  });
+
+  it("never reports a model-call number above maxAgentSteps on capped runs", async () => {
+    const endless = Array.from({ length: 40 }, (_, i) =>
+      i % 2 === 0
+        ? searchCall(`s${i}`, `query ${i}`)
+        : noteCall(`n${i}`, `Fact ${i}`, `https://alpha.example/${i}`, "Alpha"),
+    );
+    const model = new FakeToolCallingModel(endless);
+    const calls: number[] = [];
+    const graph = buildAgenticGraph({
+      ...deps(model),
+      onToolEvent: (_p, modelCall) => calls.push(modelCall ?? -1),
+    });
+    await graph.invoke(
+      { researchTopic: "alpha systems" },
+      { configurable: { ...CONFIG.configurable, maxAgentSteps: 3 } },
+    );
+    expect(Math.max(...calls)).toBeLessThanOrEqual(3);
   });
 });

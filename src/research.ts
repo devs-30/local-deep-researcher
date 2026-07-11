@@ -128,10 +128,12 @@ export async function researchAgentic(
 
   const graph = buildAgenticGraph({
     ...deps,
-    onToolEvent: (phase) => {
-      step += 1;
+    onToolEvent: (phase, modelCall) => {
+      // The model-call number is the budget unit; fall back to counting tool
+      // events only when a caller-supplied graph does not report it.
+      step = modelCall ?? step + 1;
       emit(phase);
-      deps.onToolEvent?.(phase);
+      deps.onToolEvent?.(phase, modelCall);
     },
   });
 

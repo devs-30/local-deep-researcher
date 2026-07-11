@@ -2,7 +2,7 @@ import { END, START, StateGraph } from "@langchain/langgraph";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { BaseMessage } from "@langchain/core/messages";
 import type { RunnableConfig } from "@langchain/core/runnables";
-import { createAgent, modelCallLimitMiddleware } from "langchain";
+import { createAgent, createMiddleware, modelCallLimitMiddleware } from "langchain";
 import { createAgentTools, type AgentToolPhase, type AgentToolsContext } from "./agent-tools";
 import { ensureConfiguration } from "./configuration";
 import type { GraphDeps } from "./graph";
@@ -19,7 +19,12 @@ export class AgentResearchError extends Error {
 }
 
 export interface AgenticGraphDeps extends GraphDeps {
-  onToolEvent?: (phase: AgentToolPhase) => void;
+  /**
+   * Fired once per executed tool call. modelCall is the 1-based number of the
+   * model call that requested the tool - the unit maxAgentSteps budgets. A
+   * single model call may batch several tool calls, which then share a number.
+   */
+  onToolEvent?: (phase: AgentToolPhase, modelCall?: number) => void;
 }
 
 export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
@@ -35,6 +40,17 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
     const cfg = ensureConfiguration(config);
     // The agent model may differ from the workflow model (tool calling required).
     const model = deps.getLlm({ ...cfg, localLlm: cfg.agentLlm ?? cfg.localLlm });
+    // Tool events report against the model-call budget, so count model calls
+    // exactly instead of assuming one tool call per model turn (models may
+    // batch several tool calls in a single turn).
+    let modelCalls = 0;
+    const modelCallCounter = createMiddleware({
+      name: "ModelCallCounter",
+      beforeModel: () => {
+        modelCalls += 1;
+        return undefined;
+      },
+    });
     const ctx: AgentToolsContext = {
       cfg,
       provider: deps.getSearchProvider(cfg.searchApi),
@@ -42,7 +58,7 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
       seenUrls: new Set(),
       notes: [],
       warn: deps.warn,
-      onToolEvent: deps.onToolEvent,
+      onToolEvent: deps.onToolEvent ? (phase) => deps.onToolEvent?.(phase, modelCalls) : undefined,
     };
     const agent = createAgent({
       model,
@@ -52,7 +68,12 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
         currentDate: prompts.getCurrentDate(),
         maxAgentSteps: cfg.maxAgentSteps,
       }),
-      middleware: [modelCallLimitMiddleware({ runLimit: cfg.maxAgentSteps, exitBehavior: "end" })],
+      // Order matters: the limiter's beforeModel must run first so its jump to
+      // the end prevents the counter from counting a call that never happens.
+      middleware: [
+        modelCallLimitMiddleware({ runLimit: cfg.maxAgentSteps, exitBehavior: "end" }),
+        modelCallCounter,
+      ],
     });
     const result = await agent.invoke(
       { messages: [new HumanMessage(`Research this topic: ${state.researchTopic}`)] },
