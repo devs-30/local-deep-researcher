@@ -134,4 +134,10 @@ describe("agent subcommand", () => {
     expect(HELP).toContain("--max-steps");
     expect(HELP).toContain("--agent-model");
   });
+
+  it("ignores an empty --max-steps value (falls back to default)", () => {
+    const cmd = parseCliArgs(["agent", "topic", "--max-steps", ""]);
+    if (cmd.kind !== "agent") throw new Error("expected agent");
+    expect(cmd.options.configurable.maxAgentSteps).toBeUndefined();
+  });
 });

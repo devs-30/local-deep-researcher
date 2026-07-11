@@ -80,7 +80,8 @@ export function parseCliArgs(argv: string[]): CliCommand {
   }
   const configurable: Record<string, unknown> = {};
   if (values["max-loops"] !== undefined) configurable.maxWebResearchLoops = values["max-loops"];
-  if (values["max-steps"] !== undefined) configurable.maxAgentSteps = Number(values["max-steps"]);
+  if (values["max-steps"] !== undefined && values["max-steps"] !== "")
+    configurable.maxAgentSteps = Number(values["max-steps"]);
   if (values["agent-model"] !== undefined) configurable.agentLlm = values["agent-model"];
   if (values.provider !== undefined) configurable.llmProvider = values.provider;
   if (values.model !== undefined) configurable.localLlm = values.model;
