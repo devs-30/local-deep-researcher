@@ -6,6 +6,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     environment: CI-CD
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -37,3 +40,29 @@ jobs:
         run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Mirror to GitHub Packages so the repo's Packages section lists releases.
+      # The GH npm registry requires the scope to match the repo owner, so the
+      # package is renamed to @devs-30/... for this publish only.
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: "https://npm.pkg.github.com"
+      - name: Skip if version already on GitHub Packages
+        id: check-gpr
+        run: |
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if npm view "@devs-30/local-deep-researcher@$PKG_VERSION" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "@devs-30/local-deep-researcher@$PKG_VERSION already on GitHub Packages - skipping publish"
+            echo "published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "published=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - if: steps.check-gpr.outputs.published == 'false'
+        name: Publish to GitHub Packages
+        run: |
+          npm pkg set name="@devs-30/local-deep-researcher"
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
