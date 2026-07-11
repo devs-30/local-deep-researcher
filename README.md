@@ -39,7 +39,7 @@ generate query → web search → grade sources → summarize → reflect on gap
 5. **Reflect** - the LLM looks for knowledge gaps and produces a follow-up query.
 6. Steps 2–5 repeat until the configured loop count is reached (default **3** loops), then the
    summary is finalized into a markdown report with a deduplicated source list. (Like the Python
-   original, `--max-loops N` performs N+1 search rounds: the loop runs while the counter is ≤ N.)
+   original, `--max-loops N` performs N+1 productive rounds; empty rounds get free retries up to a hard cap of `2 * (N + 1)` total rounds.)
 
 > **Behavior change vs the Python original (`ollama-deep-researcher`):** source grading is ON by
 > default and adds up to one LLM call per gathered source. Disable it with `--no-grade-sources` (CLI),
@@ -60,7 +60,8 @@ needed - the default search provider is DuckDuckGo.
 
 | Flag                    | Description                                                                   |
 | ----------------------- | ----------------------------------------------------------------------------- |
-| `--max-loops <n>`       | Research loops (default `3`; `N` yields `N+1` search rounds)                  |
+| `--max-loops <n>`       | Research loops (default `3`; N yields N+1 productive rounds)                  |
+| `--count-empty-loops`   | Empty rounds (no sources kept) also consume the loop budget (v0.2.x behavior) |
 | `--provider <name>`     | `ollama` \| `openai_compatible` (default `ollama`)                            |
 | `--model <name>`        | Model name (default `gemma4:e4b`, env `LOCAL_LLM`)                            |
 | `--base-url <url>`      | LLM base URL (Ollama or OpenAI-compatible endpoint)                           |
@@ -71,7 +72,6 @@ needed - the default search provider is DuckDuckGo.
 | `-o, --output <file>`   | Write the report to a file instead of stdout                                  |
 | `--json`                | Output `{"summary", "sources"}` JSON instead of markdown                      |
 | `-q, --quiet`           | Suppress progress output on stderr                                            |
-| `--count-empty-loops`   | Empty rounds (no sources kept) also consume the loop budget (v0.2.x behavior) |
 | `-h, --help`            | Show help                                                                     |
 | `-v, --version`         | Show version                                                                  |
 

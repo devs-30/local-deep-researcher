@@ -22,7 +22,7 @@ Usage:
   local-deep-researcher mcp                 Start the MCP stdio server
 
 Options:
-  --max-loops <n>        Research loops (default 3; N yields N+1 search rounds)
+  --max-loops <n>        Research loops (default 3; N yields N+1 productive rounds)
   --provider <name>      ollama | openai_compatible (default ollama)
   --model <name>         Model name (default gemma4:e4b, env LOCAL_LLM)
   --base-url <url>       LLM base URL (Ollama or OpenAI-compatible endpoint)
