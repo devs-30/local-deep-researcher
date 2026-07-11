@@ -25,10 +25,12 @@
 ### Task 1: Configuration fields
 
 **Files:**
+
 - Modify: `src/configuration.ts` (schema at lines 16-29, `ENV_KEYS` at lines 33-46)
 - Test: `tests/configuration.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `ConfigurationSchema`, `boolFromString`, `ENV_KEYS`.
 - Produces: `Configuration.gradeSources: boolean` (default `true`, env `GRADE_SOURCES`), `Configuration.sourceDomainBlocklist: string` (default `""`, env `SOURCE_DOMAIN_BLOCKLIST`). Later tasks read both via `ensureConfiguration`.
 
@@ -109,10 +111,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 2: Heuristics module (`src/grade.ts`)
 
 **Files:**
+
 - Create: `src/grade.ts`
 - Test: `tests/grade.test.ts` (new file)
 
 **Interfaces:**
+
 - Consumes: `SearchResult` from `src/search/types.ts` (`{ title: string; url: string; content: string; rawContent?: string }`).
 - Produces (used by Task 5's graph node):
 
@@ -124,8 +128,14 @@ export interface HeuristicsOptions {
   fetchFullPage: boolean;
   gradedUrls: Set<string>;
 }
-export interface DroppedSource { result: SearchResult; reason: string; }
-export interface HeuristicsOutcome { kept: SearchResult[]; dropped: DroppedSource[]; }
+export interface DroppedSource {
+  result: SearchResult;
+  reason: string;
+}
+export interface HeuristicsOutcome {
+  kept: SearchResult[];
+  dropped: DroppedSource[];
+}
 export function applyHeuristics(
   results: SearchResult[],
   opts: HeuristicsOptions,
@@ -199,19 +209,19 @@ describe("applyHeuristics", () => {
 
   it("uses rawContent for the thin-content bar when present", () => {
     const long = "word ".repeat(400);
-    const outcome = applyHeuristics(
-      [result({ content: "short", rawContent: long })],
-      { ...noOpts, fetchFullPage: true },
-    );
+    const outcome = applyHeuristics([result({ content: "short", rawContent: long })], {
+      ...noOpts,
+      fetchFullPage: true,
+    });
     expect(outcome.kept).toHaveLength(1);
   });
 
   it("applies the 300-word content-farm bar only to full pages", () => {
     const thinPage = "word ".repeat(100); // 100 words, > 50 chars
-    const fullPage = applyHeuristics(
-      [result({ rawContent: thinPage })],
-      { ...noOpts, fetchFullPage: true },
-    );
+    const fullPage = applyHeuristics([result({ rawContent: thinPage })], {
+      ...noOpts,
+      fetchFullPage: true,
+    });
     expect(fullPage.kept).toHaveLength(0);
     expect(fullPage.dropped[0].reason).toContain("thin full page");
     const snippetOnly = applyHeuristics([result()], noOpts);
@@ -350,10 +360,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 3: Grader prompts
 
 **Files:**
+
 - Modify: `src/prompts.ts` (append at end)
 - Test: `tests/prompts.test.ts`
 
 **Interfaces:**
+
 - Produces (used by Task 5's node):
 
 ```ts
@@ -471,12 +483,14 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 Move formatting out of `webResearch` into a new `gradeSources` node that (for now) keeps everything. All existing tests must stay green — this task changes topology, not behavior.
 
 **Files:**
+
 - Modify: `src/state.ts`
 - Modify: `src/graph.ts` (`webResearch` at lines 61-97, graph wiring at lines 159-171)
 - Modify: `src/research.ts` (`ResearchPhase` at lines 21-22, `PHASE_BY_NODE` at lines 34-40, stream loop at lines 67-78)
 - Test: existing `tests/graph.test.ts`, `tests/research.test.ts` (no new tests; green suite is the gate)
 
 **Interfaces:**
+
 - Consumes: `SearchResult` from `src/search/types.ts`.
 - Produces: state fields `pendingResults: SearchResult[]` (overwrite reducer, default `[]`) and `gradedUrls: string[]` (concat reducer, default `[]`); graph node name `"gradeSources"`; `ResearchPhase` union gains `"grading"`. Task 5 replaces the node body; Task 8 documents the flow.
 
@@ -522,47 +536,47 @@ export type SummaryState = typeof SummaryStateAnnotation.State;
 In `src/graph.ts`, replace the `return` of `webResearch` (lines 90-96) with:
 
 ```ts
-    return {
-      pendingResults: results,
-      researchLoopCount: state.researchLoopCount + 1,
-    };
+return {
+  pendingResults: results,
+  researchLoopCount: state.researchLoopCount + 1,
+};
 ```
 
 Add the pass-through node after `webResearch`:
 
 ```ts
-  async function gradeSources(state: SummaryState, config?: RunnableConfig) {
-    const cfg = ensureConfiguration(config);
-    const results = state.pendingResults;
-    return {
-      pendingResults: [],
-      gradedUrls: results.map((r) => r.url),
-      sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
-      webResearchResults: [
-        deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
-      ],
-    };
-  }
+async function gradeSources(state: SummaryState, config?: RunnableConfig) {
+  const cfg = ensureConfiguration(config);
+  const results = state.pendingResults;
+  return {
+    pendingResults: [],
+    gradedUrls: results.map((r) => r.url),
+    sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
+    webResearchResults: [
+      deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
+    ],
+  };
+}
 ```
 
 Update the wiring (replace the `webResearch → summarizeSources` edge):
 
 ```ts
-  return new StateGraph(SummaryStateAnnotation)
-    .addNode("generateQuery", generateQuery)
-    .addNode("webResearch", webResearch)
-    .addNode("gradeSources", gradeSources)
-    .addNode("summarizeSources", summarizeSources)
-    .addNode("reflectOnSummary", reflectOnSummary)
-    .addNode("finalizeSummary", finalizeSummary)
-    .addEdge(START, "generateQuery")
-    .addEdge("generateQuery", "webResearch")
-    .addEdge("webResearch", "gradeSources")
-    .addEdge("gradeSources", "summarizeSources")
-    .addEdge("summarizeSources", "reflectOnSummary")
-    .addConditionalEdges("reflectOnSummary", routeResearch, ["webResearch", "finalizeSummary"])
-    .addEdge("finalizeSummary", END)
-    .compile();
+return new StateGraph(SummaryStateAnnotation)
+  .addNode("generateQuery", generateQuery)
+  .addNode("webResearch", webResearch)
+  .addNode("gradeSources", gradeSources)
+  .addNode("summarizeSources", summarizeSources)
+  .addNode("reflectOnSummary", reflectOnSummary)
+  .addNode("finalizeSummary", finalizeSummary)
+  .addEdge(START, "generateQuery")
+  .addEdge("generateQuery", "webResearch")
+  .addEdge("webResearch", "gradeSources")
+  .addEdge("gradeSources", "summarizeSources")
+  .addEdge("summarizeSources", "reflectOnSummary")
+  .addConditionalEdges("reflectOnSummary", routeResearch, ["webResearch", "finalizeSummary"])
+  .addEdge("finalizeSummary", END)
+  .compile();
 ```
 
 - [ ] **Step 3: Update `src/research.ts`**
@@ -571,12 +585,7 @@ Extend the phase union (line 21-22):
 
 ```ts
 export type ResearchPhase =
-  | "generating_query"
-  | "searching"
-  | "grading"
-  | "summarizing"
-  | "reflecting"
-  | "finalizing";
+  "generating_query" | "searching" | "grading" | "summarizing" | "reflecting" | "finalizing";
 ```
 
 Add to `PHASE_BY_NODE`:
@@ -588,12 +597,12 @@ Add to `PHASE_BY_NODE`:
 In the stream loop, move bibliography collection from `webResearch` to `gradeSources`:
 
 ```ts
-      if (node === "webResearch") {
-        loop = typeof update.researchLoopCount === "number" ? update.researchLoopCount : loop;
-      }
-      if (node === "gradeSources") {
-        rawSourceBlocks.push(...((update.sourcesGathered as string[] | undefined) ?? []));
-      }
+if (node === "webResearch") {
+  loop = typeof update.researchLoopCount === "number" ? update.researchLoopCount : loop;
+}
+if (node === "gradeSources") {
+  rawSourceBlocks.push(...((update.sourcesGathered as string[] | undefined) ?? []));
+}
 ```
 
 - [ ] **Step 4: Run the full suite to verify no behavior change**
@@ -615,10 +624,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 5: Grading cascade in the node
 
 **Files:**
+
 - Modify: `src/graph.ts` (the `gradeSources` node from Task 4)
 - Test: `tests/graph.test.ts`
 
 **Interfaces:**
+
 - Consumes: `applyHeuristics`, `parseBlocklist` from `src/grade.ts` (Task 2); `sourceGraderInstructions`, `jsonModeGraderInstructions` from `src/prompts.ts` (Task 3); config fields from Task 1; `deps.getLlm`, `deps.warn`, `extractJsonField`, `stripThinkingTokens`, `contentToString` (already imported in `graph.ts`).
 - Produces: final node behavior relied on by Tasks 6-8 and by `research.ts`.
 
@@ -868,72 +879,72 @@ import { applyHeuristics, parseBlocklist } from "./grade";
 Replace the Task 4 `gradeSources` body with:
 
 ```ts
-  async function gradeSources(state: SummaryState, config?: RunnableConfig) {
-    const cfg = ensureConfiguration(config);
-    const results = state.pendingResults;
-    if (!cfg.gradeSources) {
-      // Pass-through: byte-identical to pre-grading behavior, zero LLM calls.
-      return {
-        pendingResults: [],
-        sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
-        webResearchResults: [
-          deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
-        ],
-      };
-    }
-    const { kept: candidates, dropped } = applyHeuristics(results, {
-      blocklist: parseBlocklist(cfg.sourceDomainBlocklist),
-      fetchFullPage: cfg.fetchFullPage,
-      gradedUrls: new Set(state.gradedUrls),
-    });
-    for (const { result, reason } of dropped) {
-      deps.warn(`gradeSources: dropped ${result.url} (${reason})`);
-    }
-    const llm = deps.getLlm(cfg, { jsonMode: true });
-    const kept: SearchResult[] = [];
-    for (const source of candidates) {
-      const excerpt = (source.rawContent ?? source.content).slice(0, MAX_TOKENS_PER_SOURCE * 4);
-      try {
-        const result = await llm.invoke([
-          new SystemMessage(
-            prompts.sourceGraderInstructions({
-              researchTopic: state.researchTopic,
-              searchQuery: state.searchQuery,
-            }),
-          ),
-          new HumanMessage(
-            `<SOURCE>\nTitle: ${source.title}\nURL: ${source.url}\nContent: ${excerpt}\n</SOURCE>\n\n${prompts.jsonModeGraderInstructions}`,
-          ),
-        ]);
-        let content = contentToString(result.content);
-        if (cfg.stripThinkingTokens) content = stripThinkingTokens(content);
-        const verdict = extractJsonField(content, "relevant");
-        // Fail-open: an unparsable verdict keeps the source (lenient by design).
-        if (verdict === undefined || verdict.trim().toLowerCase().startsWith("y")) {
-          kept.push(source);
-        } else {
-          deps.warn(`gradeSources: dropped ${source.url} (not relevant to the query)`);
-        }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        deps.warn(`gradeSources: grader failed for ${source.url}, keeping source: ${message}`);
-        kept.push(source);
-      }
-    }
-    if (results.length > 0 && kept.length === 0) {
-      deps.warn(
-        `gradeSources: all ${results.length} sources rejected this round; continuing with an empty round`,
-      );
-    }
+async function gradeSources(state: SummaryState, config?: RunnableConfig) {
+  const cfg = ensureConfiguration(config);
+  const results = state.pendingResults;
+  if (!cfg.gradeSources) {
+    // Pass-through: byte-identical to pre-grading behavior, zero LLM calls.
     return {
       pendingResults: [],
-      gradedUrls: results.map((r) => r.url),
-      sourcesGathered: kept.length > 0 ? [formatSources(kept)] : [],
+      sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
       webResearchResults: [
-        deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
+        deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
       ],
     };
   }
+  const { kept: candidates, dropped } = applyHeuristics(results, {
+    blocklist: parseBlocklist(cfg.sourceDomainBlocklist),
+    fetchFullPage: cfg.fetchFullPage,
+    gradedUrls: new Set(state.gradedUrls),
+  });
+  for (const { result, reason } of dropped) {
+    deps.warn(`gradeSources: dropped ${result.url} (${reason})`);
+  }
+  const llm = deps.getLlm(cfg, { jsonMode: true });
+  const kept: SearchResult[] = [];
+  for (const source of candidates) {
+    const excerpt = (source.rawContent ?? source.content).slice(0, MAX_TOKENS_PER_SOURCE * 4);
+    try {
+      const result = await llm.invoke([
+        new SystemMessage(
+          prompts.sourceGraderInstructions({
+            researchTopic: state.researchTopic,
+            searchQuery: state.searchQuery,
+          }),
+        ),
+        new HumanMessage(
+          `<SOURCE>\nTitle: ${source.title}\nURL: ${source.url}\nContent: ${excerpt}\n</SOURCE>\n\n${prompts.jsonModeGraderInstructions}`,
+        ),
+      ]);
+      let content = contentToString(result.content);
+      if (cfg.stripThinkingTokens) content = stripThinkingTokens(content);
+      const verdict = extractJsonField(content, "relevant");
+      // Fail-open: an unparsable verdict keeps the source (lenient by design).
+      if (verdict === undefined || verdict.trim().toLowerCase().startsWith("y")) {
+        kept.push(source);
+      } else {
+        deps.warn(`gradeSources: dropped ${source.url} (not relevant to the query)`);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      deps.warn(`gradeSources: grader failed for ${source.url}, keeping source: ${message}`);
+      kept.push(source);
+    }
+  }
+  if (results.length > 0 && kept.length === 0) {
+    deps.warn(
+      `gradeSources: all ${results.length} sources rejected this round; continuing with an empty round`,
+    );
+  }
+  return {
+    pendingResults: [],
+    gradedUrls: results.map((r) => r.url),
+    sourcesGathered: kept.length > 0 ? [formatSources(kept)] : [],
+    webResearchResults: [
+      deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
+    ],
+  };
+}
 ```
 
 - [ ] **Step 4: Run tests to verify they pass**
@@ -957,10 +968,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 6: CLI flags
 
 **Files:**
+
 - Modify: `src/cli-args.ts` (HELP at lines 18-38, options at lines 45-57, mapping at lines 67-77)
 - Test: `tests/cli-args.test.ts`
 
 **Interfaces:**
+
 - Consumes: config keys `gradeSources`, `sourceDomainBlocklist` (Task 1).
 - Produces: CLI flags `--no-grade-sources` and `--blocklist <domains>` mapped into `options.configurable`.
 
@@ -1008,8 +1021,8 @@ In `src/cli-args.ts` add to the `options` object:
 Add to the `configurable` mapping (after the `fetch-full-page` line):
 
 ```ts
-  if (values["no-grade-sources"]) configurable.gradeSources = false;
-  if (values.blocklist !== undefined) configurable.sourceDomainBlocklist = values.blocklist;
+if (values["no-grade-sources"]) configurable.gradeSources = false;
+if (values.blocklist !== undefined) configurable.sourceDomainBlocklist = values.blocklist;
 ```
 
 Add to `HELP` after the `--fetch-full-page` line:
@@ -1042,10 +1055,12 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 7: MCP tool inputs
 
 **Files:**
+
 - Modify: `src/mcp.ts` (inputSchema at lines 29-33, handler mapping at lines 35-38)
 - Test: `tests/mcp.test.ts`
 
 **Interfaces:**
+
 - Consumes: config keys from Task 1; existing `createMcpServer({ researchFn })` injection.
 - Produces: optional MCP tool inputs `grade_sources: boolean`, `source_domain_blocklist: string` on the `deep_research` tool.
 
@@ -1060,19 +1075,19 @@ import { describe, expect, it, vi } from "vitest";
 Append inside the `describe("MCP server", ...)` block:
 
 ```ts
-  it("forwards grade_sources and source_domain_blocklist to the research configurable", async () => {
-    const spy = vi.fn(fakeResearch);
-    const client = await connectedClient({ researchFn: spy, preflight: async () => {} });
-    await client.callTool({
-      name: "deep_research",
-      arguments: { topic: "t", grade_sources: false, source_domain_blocklist: "spam.example" },
-    });
-    expect(spy).toHaveBeenCalledWith(
-      "t",
-      expect.objectContaining({ gradeSources: false, sourceDomainBlocklist: "spam.example" }),
-      expect.anything(),
-    );
+it("forwards grade_sources and source_domain_blocklist to the research configurable", async () => {
+  const spy = vi.fn(fakeResearch);
+  const client = await connectedClient({ researchFn: spy, preflight: async () => {} });
+  await client.callTool({
+    name: "deep_research",
+    arguments: { topic: "t", grade_sources: false, source_domain_blocklist: "spam.example" },
   });
+  expect(spy).toHaveBeenCalledWith(
+    "t",
+    expect.objectContaining({ gradeSources: false, sourceDomainBlocklist: "spam.example" }),
+    expect.anything(),
+  );
+});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -1128,9 +1143,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ### Task 8: Documentation + final verification
 
 **Files:**
+
 - Modify: `README.md` (CLI options table near line 49, configuration table near lines 143-144, graph/flow description section)
 
 **Interfaces:**
+
 - Consumes: everything above. No code changes.
 
 - [ ] **Step 1: Update README**
@@ -1154,15 +1171,15 @@ the research loop simply tries a different query next iteration.
 2. **CLI options table** — add rows:
 
 ```markdown
-| `--no-grade-sources`  | Disable source grading (credibility + relevance filter)                     |
-| `--blocklist <domains>` | Comma-separated domains to always reject                                   |
+| `--no-grade-sources` | Disable source grading (credibility + relevance filter) |
+| `--blocklist <domains>` | Comma-separated domains to always reject |
 ```
 
 3. **Configuration table** — add rows (match existing column formatting):
 
 ```markdown
-| `gradeSources`            | `GRADE_SOURCES`              | `true`                                                |
-| `sourceDomainBlocklist`   | `SOURCE_DOMAIN_BLOCKLIST`    | (empty)                                               |
+| `gradeSources` | `GRADE_SOURCES` | `true` |
+| `sourceDomainBlocklist` | `SOURCE_DOMAIN_BLOCKLIST` | (empty) |
 ```
 
 - [ ] **Step 2: Final verification**

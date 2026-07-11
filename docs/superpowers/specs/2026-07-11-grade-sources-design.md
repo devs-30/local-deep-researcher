@@ -23,13 +23,13 @@ Non-goal: claim-level support checking (Self-RAG ISSUP) — out of scope for thi
 
 ## Decisions (from brainstorming)
 
-| Decision | Choice |
-|---|---|
-| Scope | Hybrid: credibility heuristics + LLM relevance grading |
-| Default | ON, opt-out via dedicated flag (behavior change vs upstream — changelog entry) |
-| LLM grading mode | Per source, binary yes/no (most reliable on small local models) |
+| Decision             | Choice                                                                         |
+| -------------------- | ------------------------------------------------------------------------------ |
+| Scope                | Hybrid: credibility heuristics + LLM relevance grading                         |
+| Default              | ON, opt-out via dedicated flag (behavior change vs upstream — changelog entry) |
+| LLM grading mode     | Per source, binary yes/no (most reliable on small local models)                |
 | All sources rejected | Drop all + warning; existing reflect loop retries with a new query (CRAG-lite) |
-| Heuristics ↔ LLM | Cascade: heuristics pre-filter, survivors go to the LLM |
+| Heuristics ↔ LLM     | Cascade: heuristics pre-filter, survivors go to the LLM                        |
 
 ## Graph topology
 
@@ -55,7 +55,7 @@ LangGraph Studio while configuration arrives per-invocation via `RunnableConfig`
 - `gradeSources` consumes `pendingResults`, filters, then produces the formatted
   outputs exactly as `webResearch` does today: `formatSources(kept)` appended to
   `sourcesGathered`, `deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE,
-  fetchFullPage)` appended to `webResearchResults`.
+fetchFullPage)` appended to `webResearchResults`.
 - Rejected sources therefore never reach the summarizer nor the final bibliography.
 - With `gradeSources=false` the node formats everything unfiltered — output identical
   to current behavior, zero extra LLM calls.
@@ -102,10 +102,10 @@ For each survivor, one JSON-mode LLM call (same model as the rest of the graph):
 
 Two new `ConfigurationSchema` fields (+ env, CLI args, MCP, Studio):
 
-| Field | Type | Default | Env |
-|---|---|---|---|
-| `gradeSources` | boolean | `true` | `GRADE_SOURCES` |
-| `sourceDomainBlocklist` | string (comma-separated) | `""` | `SOURCE_DOMAIN_BLOCKLIST` |
+| Field                   | Type                     | Default | Env                       |
+| ----------------------- | ------------------------ | ------- | ------------------------- |
+| `gradeSources`          | boolean                  | `true`  | `GRADE_SOURCES`           |
+| `sourceDomainBlocklist` | string (comma-separated) | `""`    | `SOURCE_DOMAIN_BLOCKLIST` |
 
 Changelog: note the behavior change vs upstream (extra per-source LLM calls, result
 filtering, default ON). README: document the node and how to disable it.
@@ -117,8 +117,8 @@ filtering, default ON). README: document the node and how to disable it.
   empty blocklist cuts nothing.
 - **Node/graph**: via existing `buildGraph({ getLlm, getSearchProvider })` injection —
   fake LLM returning scripted verdicts: keep/drop path, all-rejected path (empty round
-  + warn), `gradeSources=false` (zero grader calls, output identical to current),
-  fail-open on malformed JSON and on LLM exceptions.
+  - warn), `gradeSources=false` (zero grader calls, output identical to current),
+    fail-open on malformed JSON and on LLM exceptions.
 - **Bibliography**: a rejected source never appears in the final "Sources" section.
 
 ## Research references
