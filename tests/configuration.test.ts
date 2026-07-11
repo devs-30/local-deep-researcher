@@ -20,6 +20,7 @@ const MANAGED_ENV = [
   "SEARXNG_URL",
   "GRADE_SOURCES",
   "SOURCE_DOMAIN_BLOCKLIST",
+  "COUNT_EMPTY_LOOPS",
 ];
 
 let savedEnv: Record<string, string | undefined>;
@@ -106,6 +107,21 @@ describe("ensureConfiguration", () => {
       expect(cfg.gradeSources).toBe(true);
     } finally {
       delete process.env.GRADE_SOURCES;
+    }
+  });
+
+  it("defaults countEmptyLoops to false", () => {
+    const cfg = ensureConfiguration();
+    expect(cfg.countEmptyLoops).toBe(false);
+  });
+
+  it("reads COUNT_EMPTY_LOOPS from env", () => {
+    process.env.COUNT_EMPTY_LOOPS = "true";
+    try {
+      const cfg = ensureConfiguration();
+      expect(cfg.countEmptyLoops).toBe(true);
+    } finally {
+      delete process.env.COUNT_EMPTY_LOOPS;
     }
   });
 });

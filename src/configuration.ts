@@ -28,6 +28,7 @@ export const ConfigurationSchema = z.object({
   searxngUrl: z.string().optional(),
   gradeSources: boolFromString.default(true),
   sourceDomainBlocklist: z.string().default(""),
+  countEmptyLoops: boolFromString.default(false),
 });
 
 export type Configuration = z.infer<typeof ConfigurationSchema>;
@@ -47,6 +48,7 @@ const ENV_KEYS: Record<keyof Configuration, string> = {
   searxngUrl: "SEARXNG_URL",
   gradeSources: "GRADE_SOURCES",
   sourceDomainBlocklist: "SOURCE_DOMAIN_BLOCKLIST",
+  countEmptyLoops: "COUNT_EMPTY_LOOPS",
 };
 
 /**
