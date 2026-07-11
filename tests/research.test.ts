@@ -70,7 +70,8 @@ describe("research", () => {
       { maxWebResearchLoops: 4 },
       {},
       {
-        getLlm: () => new FakeListChatModel({ responses: ['{"relevant": "no", "reason": "junk"}'] }),
+        getLlm: () =>
+          new FakeListChatModel({ responses: ['{"relevant": "no", "reason": "junk"}'] }),
         getSearchProvider: () => async () => [
           {
             title: "Same page",
