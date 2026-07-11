@@ -1,5 +1,9 @@
 # @devs30/local-deep-researcher
 
+[![npm](https://img.shields.io/npm/v/%40devs30%2Flocal-deep-researcher)](https://www.npmjs.com/package/@devs30/local-deep-researcher)
+[![CI](https://github.com/devs-30/local-deep-researcher/actions/workflows/ci.yml/badge.svg)](https://github.com/devs-30/local-deep-researcher/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/%40devs30%2Flocal-deep-researcher)](./LICENSE)
+
 A JavaScript/TypeScript port of
 [langchain-ai/local-deep-researcher](https://github.com/langchain-ai/local-deep-researcher):
 a fully local, iterative web research assistant built on [LangGraph.js](https://langchain-ai.github.io/langgraphjs/).
