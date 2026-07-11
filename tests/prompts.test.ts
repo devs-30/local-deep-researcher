@@ -99,6 +99,16 @@ describe("agentInstructions", () => {
     expect(text).toContain("take_note");
   });
 
+  it("warns that search excerpts are truncated and directs list pages to fetch_page", () => {
+    const text = prompts.agentInstructions({
+      researchTopic: "list all X",
+      currentDate: "January 1, 2026",
+      maxAgentSteps: 12,
+    });
+    expect(text).toMatch(/only (a )?short excerpt/i);
+    expect(text).toMatch(/catalogs|customer stories|rankings/i);
+  });
+
   it("scales research breadth to the user's intent instead of a fixed note count", () => {
     const text = prompts.agentInstructions({
       researchTopic: "list all X",

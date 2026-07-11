@@ -29,7 +29,9 @@ export interface AgentToolsContext {
 
 // Same per-source budget as the workflow (MAX_TOKENS_PER_SOURCE * 4 chars).
 const MAX_EXCERPT_CHARS = 4000;
-const MAX_PAGE_CHARS = 8000;
+// Generous enough to keep long catalog/list pages mostly intact after markdown
+// conversion, while still bounding context growth for local models.
+const MAX_PAGE_CHARS = 16_000;
 
 // 172.16.0.0/12 spans second-octet values 16-31.
 const IPV4_172_PRIVATE_RANGE = { min: 16, max: 31 };

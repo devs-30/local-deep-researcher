@@ -174,7 +174,11 @@ You have three tools:
 Rules:
 1. Start with a web_search using a focused query (not the topic verbatim if it is broad).
 2. After each search, record every relevant finding with take_note before searching again.
-3. Use fetch_page only when an excerpt looks promising but is too shallow.
+3. Search results show only a short excerpt of each page, never its full content.
+   When a page likely lists more items than its excerpt shows (catalogs, customer
+   stories, rankings, directories) - especially when the user asks to enumerate
+   things - call fetch_page on it and note everything relevant before searching
+   again. Also use fetch_page when an excerpt looks promising but is too shallow.
 4. Prefer several precise searches over one broad one. Avoid repeating similar queries.
 5. You have a budget of at most ${params.maxAgentSteps} thinking steps. Plan accordingly.
 6. Match the breadth the user asked for. For a focused question, 5-10 solid notes are

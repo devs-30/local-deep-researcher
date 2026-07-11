@@ -77,13 +77,14 @@ describe("web_search tool", () => {
 
 describe("fetch_page tool", () => {
   it("returns page content truncated and emits fetching", async () => {
-    const ctx = makeCtx({ fetchPage: vi.fn(async () => "x".repeat(20_000)) });
+    const ctx = makeCtx({ fetchPage: vi.fn(async () => "x".repeat(40_000)) });
     const events: string[] = [];
     ctx.onToolEvent = (phase) => events.push(phase);
     const out = (await getTool(ctx, "fetch_page").invoke({
       url: "https://good.example/a",
     })) as string;
-    expect(out.length).toBeLessThanOrEqual(8000);
+    // 16k chars keeps long catalog/list pages mostly intact while staying bounded.
+    expect(out.length).toBe(16_000);
     expect(events).toEqual(["fetching"]);
   });
 
