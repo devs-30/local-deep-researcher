@@ -3,8 +3,8 @@ import { createRequire } from "node:module";
 import { config as loadDotenv } from "dotenv";
 import { HELP, parseCliArgs, type CliCommand } from "./cli-args";
 import { ConfigurationError, ensureConfiguration, validateConfiguration } from "./configuration";
-import { PreflightError, preflightOllama } from "./preflight";
-import { research } from "./research";
+import { PreflightError, preflightAgentModel, preflightOllama } from "./preflight";
+import { research, researchAgentic } from "./research";
 import { runMcpServer } from "./mcp";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
@@ -43,10 +43,17 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     const cfg = ensureConfiguration({ configurable: options.configurable });
     validateConfiguration(cfg);
     await preflightOllama(cfg);
+    if (command.kind === "agent") await preflightAgentModel(cfg);
     started = true;
-    const report = await research(options.topic, options.configurable, {
+    const runner = command.kind === "agent" ? researchAgentic : research;
+    const report = await runner(options.topic, options.configurable, {
       onProgress: (event) => {
-        if (!options.quiet) console.error(`[${event.phase}] loop ${event.loop}/${event.maxLoops}`);
+        if (options.quiet) return;
+        if (event.step !== undefined) {
+          console.error(`[${event.phase}] step ${event.step}/${event.maxSteps}`);
+        } else {
+          console.error(`[${event.phase}] loop ${event.loop}/${event.maxLoops}`);
+        }
       },
     });
     const output = options.json

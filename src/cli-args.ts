@@ -11,6 +11,7 @@ export interface CliOptions {
 
 export type CliCommand =
   | { kind: "research"; options: CliOptions }
+  | { kind: "agent"; options: CliOptions }
   | { kind: "mcp" }
   | { kind: "help" }
   | { kind: "version" };
@@ -18,11 +19,14 @@ export type CliCommand =
 export const HELP = `local-deep-researcher - fully local iterative web research (LangGraph.js)
 
 Usage:
-  local-deep-researcher "<topic>" [options]
-  local-deep-researcher mcp                 Start the MCP stdio server
+  local-deep-researcher "<topic>" [options]         Fixed research workflow
+  local-deep-researcher agent "<topic>" [options]   Agentic research (tool-calling loop)
+  local-deep-researcher mcp                         Start the MCP stdio server
 
 Options:
   --max-loops <n>        Research loops (default 3; N yields N+1 productive rounds)
+  --max-steps <n>        Agent mode: max model calls in the loop (default 20)
+  --agent-model <name>   Agent mode: tool-calling model (default: --model, env AGENT_LLM)
   --provider <name>      ollama | openai_compatible (default ollama)
   --model <name>         Model name (default gemma4:e4b, env LOCAL_LLM)
   --base-url <url>       LLM base URL (Ollama or OpenAI-compatible endpoint)
@@ -42,11 +46,15 @@ OPENAI_COMPATIBLE_BASE_URL, OPENAI_COMPATIBLE_API_KEY, GRADE_SOURCES, SOURCE_DOM
 
 export function parseCliArgs(argv: string[]): CliCommand {
   if (argv[0] === "mcp") return { kind: "mcp" };
+  const isAgent = argv[0] === "agent";
+  const args = isAgent ? argv.slice(1) : argv;
   const { values, positionals } = parseArgs({
-    args: argv,
+    args,
     allowPositionals: true,
     options: {
       "max-loops": { type: "string" },
+      "max-steps": { type: "string" },
+      "agent-model": { type: "string" },
       provider: { type: "string" },
       model: { type: "string" },
       "base-url": { type: "string" },
@@ -72,6 +80,8 @@ export function parseCliArgs(argv: string[]): CliCommand {
   }
   const configurable: Record<string, unknown> = {};
   if (values["max-loops"] !== undefined) configurable.maxWebResearchLoops = values["max-loops"];
+  if (values["max-steps"] !== undefined) configurable.maxAgentSteps = Number(values["max-steps"]);
+  if (values["agent-model"] !== undefined) configurable.agentLlm = values["agent-model"];
   if (values.provider !== undefined) configurable.llmProvider = values.provider;
   if (values.model !== undefined) configurable.localLlm = values.model;
   if (values["search-api"] !== undefined) configurable.searchApi = values["search-api"];
@@ -85,7 +95,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
     configurable.openaiCompatibleBaseUrl = values["base-url"];
   }
   return {
-    kind: "research",
+    kind: isAgent ? "agent" : "research",
     options: {
       topic,
       configurable,

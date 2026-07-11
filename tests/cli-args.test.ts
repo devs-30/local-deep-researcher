@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseCliArgs } from "../src/cli-args";
+import { HELP, parseCliArgs } from "../src/cli-args";
 import { ConfigurationError } from "../src/configuration";
 
 describe("parseCliArgs", () => {
@@ -97,5 +97,41 @@ describe("parseCliArgs", () => {
     expect(cmd.kind).toBe("research");
     if (cmd.kind !== "research") return;
     expect("countEmptyLoops" in cmd.options.configurable).toBe(false);
+  });
+});
+
+describe("agent subcommand", () => {
+  it("parses agent with topic and agent flags", () => {
+    const cmd = parseCliArgs([
+      "agent",
+      "quantum computing",
+      "--max-steps",
+      "10",
+      "--agent-model",
+      "qwen3",
+    ]);
+    expect(cmd.kind).toBe("agent");
+    if (cmd.kind !== "agent") return;
+    expect(cmd.options.topic).toBe("quantum computing");
+    expect(cmd.options.configurable.maxAgentSteps).toBe(10);
+    expect(cmd.options.configurable.agentLlm).toBe("qwen3");
+  });
+
+  it("supports shared options in agent mode", () => {
+    const cmd = parseCliArgs(["agent", "topic", "--search-api", "searxng", "--json", "-q"]);
+    if (cmd.kind !== "agent") throw new Error("expected agent");
+    expect(cmd.options.configurable.searchApi).toBe("searxng");
+    expect(cmd.options.json).toBe(true);
+    expect(cmd.options.quiet).toBe(true);
+  });
+
+  it("requires a topic in agent mode", () => {
+    expect(() => parseCliArgs(["agent"])).toThrow(ConfigurationError);
+  });
+
+  it("mentions the agent subcommand in help", () => {
+    expect(HELP).toContain("agent");
+    expect(HELP).toContain("--max-steps");
+    expect(HELP).toContain("--agent-model");
   });
 });
