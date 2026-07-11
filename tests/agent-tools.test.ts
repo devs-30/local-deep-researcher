@@ -33,6 +33,7 @@ describe("web_search tool", () => {
     expect(out).toContain("https://good.example/a");
     expect(out).not.toContain("spam.example");
     expect(ctx.seenUrls.has("https://good.example/a")).toBe(true);
+    expect(ctx.seenUrls.has("https://spam.example/x")).toBe(true);
     expect(events).toEqual(["searching"]);
   });
 
