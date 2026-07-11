@@ -33,7 +33,9 @@ export function createMcpServer(deps: McpDeps = {}): McpServer {
         grade_sources: z
           .boolean()
           .optional()
-          .describe("Grade sources for credibility and relevance before summarizing (default true)"),
+          .describe(
+            "Grade sources for credibility and relevance before summarizing (default true)",
+          ),
         source_domain_blocklist: z
           .string()
           .optional()

@@ -60,19 +60,19 @@ describe("applyHeuristics", () => {
 
   it("uses rawContent for the thin-content bar when present", () => {
     const long = "word ".repeat(400);
-    const outcome = applyHeuristics(
-      [result({ content: "short", rawContent: long })],
-      { ...noOpts, fetchFullPage: true },
-    );
+    const outcome = applyHeuristics([result({ content: "short", rawContent: long })], {
+      ...noOpts,
+      fetchFullPage: true,
+    });
     expect(outcome.kept).toHaveLength(1);
   });
 
   it("applies the 300-word content-farm bar only to full pages", () => {
     const thinPage = "word ".repeat(100); // 100 words, > 50 chars
-    const fullPage = applyHeuristics(
-      [result({ rawContent: thinPage })],
-      { ...noOpts, fetchFullPage: true },
-    );
+    const fullPage = applyHeuristics([result({ rawContent: thinPage })], {
+      ...noOpts,
+      fetchFullPage: true,
+    });
     expect(fullPage.kept).toHaveLength(0);
     expect(fullPage.dropped[0].reason).toContain("thin full page");
     const snippetOnly = applyHeuristics([result()], noOpts);
