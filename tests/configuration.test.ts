@@ -21,6 +21,8 @@ const MANAGED_ENV = [
   "GRADE_SOURCES",
   "SOURCE_DOMAIN_BLOCKLIST",
   "COUNT_EMPTY_LOOPS",
+  "AGENT_LLM",
+  "MAX_AGENT_STEPS",
 ];
 
 let savedEnv: Record<string, string | undefined>;
@@ -149,5 +151,40 @@ describe("validateConfiguration", () => {
 
   it("passes for default duckduckgo + ollama", () => {
     expect(() => validateConfiguration(ensureConfiguration())).not.toThrow();
+  });
+});
+
+describe("agentic configuration", () => {
+  it("defaults maxAgentSteps to 20 and leaves agentLlm unset", () => {
+    const cfg = ensureConfiguration();
+    expect(cfg.maxAgentSteps).toBe(20);
+    expect(cfg.agentLlm).toBeUndefined();
+  });
+
+  it("reads agentLlm and maxAgentSteps from configurable", () => {
+    const cfg = ensureConfiguration({
+      configurable: { agentLlm: "qwen3", maxAgentSteps: 5 },
+    });
+    expect(cfg.agentLlm).toBe("qwen3");
+    expect(cfg.maxAgentSteps).toBe(5);
+  });
+
+  it("reads AGENT_LLM and MAX_AGENT_STEPS from env", () => {
+    process.env.AGENT_LLM = "llama3.3";
+    process.env.MAX_AGENT_STEPS = "7";
+    try {
+      const cfg = ensureConfiguration();
+      expect(cfg.agentLlm).toBe("llama3.3");
+      expect(cfg.maxAgentSteps).toBe(7);
+    } finally {
+      delete process.env.AGENT_LLM;
+      delete process.env.MAX_AGENT_STEPS;
+    }
+  });
+
+  it("rejects maxAgentSteps below 1", () => {
+    expect(() => ensureConfiguration({ configurable: { maxAgentSteps: 0 } })).toThrow(
+      ConfigurationError,
+    );
   });
 });
