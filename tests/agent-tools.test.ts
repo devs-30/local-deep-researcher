@@ -37,9 +37,21 @@ describe("web_search tool", () => {
     expect(events).toEqual(["searching"]);
   });
 
-  it("dedups already-seen urls and reports no new results", async () => {
+  it("steers the model to a different query when all results were already seen", async () => {
     const ctx = makeCtx({
       seenUrls: new Set(["https://good.example/a", "https://spam.example/x"]),
+    });
+    const out = (await getTool(ctx, "web_search").invoke({ query: "test" })) as string;
+    expect(out).toContain("already seen");
+    expect(out).toContain("differentiate");
+  });
+
+  it("reports no new relevant results when heuristics (not dedup) dropped everything", async () => {
+    // A single thin result: dropped for content quality, not because it was seen.
+    const ctx = makeCtx({
+      provider: vi.fn(async (): Promise<SearchResult[]> => [
+        { title: "Thin", url: "https://thin.example/x", content: "too short" },
+      ]),
     });
     const out = (await getTool(ctx, "web_search").invoke({ query: "test" })) as string;
     expect(out).toContain("No new relevant results");

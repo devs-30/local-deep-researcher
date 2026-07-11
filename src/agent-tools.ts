@@ -109,7 +109,21 @@ export function createAgentTools(ctx: AgentToolsContext): StructuredToolInterfac
         ctx.warn(`web_search: dropped ${result.url} (${reason})`);
       }
       for (const r of results) ctx.seenUrls.add(r.url);
-      if (kept.length === 0) return "No new relevant results. Try a different query.";
+      if (kept.length === 0) {
+        const allSeen =
+          results.length > 0 &&
+          dropped.every(
+            (d) =>
+              d.reason === "already graded in a previous loop" ||
+              d.reason === "duplicate URL in this round",
+          );
+        // Repeated near-identical queries only resurface known pages; tell the
+        // model explicitly so it changes angle instead of burning budget.
+        if (allSeen) {
+          return "All results were already seen in previous searches. Try another query that will differentiate the results (different keywords, site, or angle), or note what you already have.";
+        }
+        return "No new relevant results. Try a different query.";
+      }
       return kept
         .map(
           (r) =>
