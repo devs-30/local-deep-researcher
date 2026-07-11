@@ -21,8 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with a hint to set `--agent-model` / `AGENT_LLM` (e.g. `qwen3`)
 - New dependency: `langchain@^1`
 
-Existing workflow behavior (`research()` / `local-deep-researcher <topic>`) is unchanged;
-agentic mode is purely additive
+### Changed
+
+- Fetched pages are stripped of scripts, styles and page chrome (nav, footer, aside, forms,
+  inline SVG, comments) before markdown conversion - fewer junk tokens in the agent's
+  `fetch_page` output and in the workflow's `fetchFullPage` content
+
+Existing workflow behavior (`research()` / `local-deep-researcher <topic>`) is otherwise
+unchanged; agentic mode is purely additive
 
 ## [0.5.0] - 2026-07-11
 

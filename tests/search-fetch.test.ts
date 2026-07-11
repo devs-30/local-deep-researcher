@@ -22,6 +22,34 @@ describe("fetchRawContent", () => {
     expect(md).toContain("Body text");
   });
 
+  it("strips scripts, styles and page chrome before markdown conversion", async () => {
+    const html = `<html><head><style>.x{color:red}</style><script>var t=1;</script></head>
+      <body>
+        <nav><a href="/a">Products</a><a href="/b">Pricing</a></nav>
+        <main><h1>Customers</h1><p>Rakuten uses LangChain.</p></main>
+        <aside>Related articles</aside>
+        <footer><a href="/tos">Terms</a></footer>
+        <script>analytics.track()</script>
+        <!-- tracking comment -->
+      </body></html>`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () => new Response(html, { status: 200, headers: { "content-type": "text/html" } }),
+      ),
+    );
+    const md = await fetchRawContent("https://example.com");
+    expect(md).toContain("Customers");
+    expect(md).toContain("Rakuten uses LangChain.");
+    expect(md).not.toContain("var t=1");
+    expect(md).not.toContain("analytics.track");
+    expect(md).not.toContain("color:red");
+    expect(md).not.toContain("Products");
+    expect(md).not.toContain("Terms");
+    expect(md).not.toContain("Related articles");
+    expect(md).not.toContain("tracking comment");
+  });
+
   it("returns undefined on HTTP errors", async () => {
     vi.stubGlobal(
       "fetch",
