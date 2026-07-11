@@ -187,7 +187,12 @@ Rules:
    keep searching from different angles (other keywords, sites, phrasings) and use
    the whole step budget if needed - stop early only when consecutive searches
    surface nothing new.
-7. When your notes cover the topic at the requested breadth, respond with a short
+7. Negative results are results. If your searches keep finding nothing relevant,
+   record that as a negative finding with take_note before stopping: state what you
+   looked for and that no evidence was found, citing the closest source you saw
+   (e.g. "No evidence that X was used for Y; searches for A, B found only Z").
+   Never stop with zero notes.
+8. When your notes cover the topic at the requested breadth, respond with a short
    plain-text confirmation and STOP calling tools. Do not write the report yourself.`;
 
 export const reportWriterInstructions = `Write a well-structured research report in markdown based ONLY on the provided notes.

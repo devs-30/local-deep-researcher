@@ -109,6 +109,17 @@ describe("agentInstructions", () => {
     expect(text).toMatch(/catalogs|customer stories|rankings/i);
   });
 
+  it("tells the agent to record negative findings instead of ending empty-handed", () => {
+    const text = prompts.agentInstructions({
+      researchTopic: "was X ever used on Y",
+      currentDate: "January 1, 2026",
+      maxAgentSteps: 12,
+    });
+    expect(text).toMatch(/negative finding/i);
+    expect(text).toMatch(/no evidence/i);
+    expect(text).toMatch(/never stop with zero notes/i);
+  });
+
   it("scales research breadth to the user's intent instead of a fixed note count", () => {
     const text = prompts.agentInstructions({
       researchTopic: "list all X",

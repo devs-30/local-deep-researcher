@@ -101,7 +101,7 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
     const cfg = ensureConfiguration(config);
     if (state.notes.length === 0) {
       throw new AgentResearchError(
-        "Agent finished without gathering any findings. Try a larger --max-steps or a different --agent-model.",
+        "Agent finished without recording any findings - not even a negative one, although the prompt asks for it. The model likely struggles to follow note-taking instructions; try a different --agent-model, or a larger --max-steps.",
       );
     }
     const llm = deps.getLlm(cfg);
