@@ -25,6 +25,8 @@ export interface AgentToolsContext {
   onToolEvent?: (phase: AgentToolPhase) => void;
   /** Test seam; defaults to fetchRawContent. */
   fetchPage?: typeof fetchRawContent;
+  /** Current model-call usage, reported back to the model in take_note confirmations. */
+  budget?: () => { used: number; max: number };
 }
 
 // Same per-source budget as the workflow (MAX_TOKENS_PER_SOURCE * 4 chars).
@@ -181,7 +183,12 @@ export function createAgentTools(ctx: AgentToolsContext): StructuredToolInterfac
     }) => {
       ctx.onToolEvent?.("noting");
       ctx.notes.push({ note, sourceUrl: source_url, sourceTitle: source_title });
-      return `Noted (${ctx.notes.length} notes so far).`;
+      // Anti-satisficing nudge at the exact moment the model decides whether to
+      // stop: models tend to quit after one rich haul even when the user asked
+      // for exhaustive coverage and most of the budget is unspent.
+      const budget = ctx.budget?.();
+      const budgetInfo = budget ? ` at model call ${budget.used} of ${budget.max}` : "";
+      return `Noted (${ctx.notes.length} notes so far${budgetInfo}). If the user asked for an exhaustive answer, keep searching from new angles - stop only when searches surface nothing new.`;
     },
     {
       name: "take_note",

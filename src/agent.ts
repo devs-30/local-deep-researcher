@@ -59,6 +59,7 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
       notes: [],
       warn: deps.warn,
       onToolEvent: deps.onToolEvent ? (phase) => deps.onToolEvent?.(phase, modelCalls) : undefined,
+      budget: () => ({ used: modelCalls, max: cfg.maxAgentSteps }),
     };
     const agent = createAgent({
       model,

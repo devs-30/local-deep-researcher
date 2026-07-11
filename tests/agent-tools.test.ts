@@ -182,4 +182,25 @@ describe("take_note tool", () => {
     expect(out).toContain("1");
     expect(events).toEqual(["noting"]);
   });
+
+  it("reminds the model to keep going on exhaustive questions, with budget state", async () => {
+    const ctx = makeCtx({ budget: () => ({ used: 3, max: 24 }) });
+    const out = (await getTool(ctx, "take_note").invoke({
+      note: "Finding A",
+      source_url: "https://good.example/a",
+    })) as string;
+    expect(out).toContain("model call 3 of 24");
+    expect(out).toMatch(/exhaustive/i);
+    expect(out).toMatch(/nothing new/i);
+  });
+
+  it("omits budget state when the context provides none", async () => {
+    const ctx = makeCtx();
+    const out = (await getTool(ctx, "take_note").invoke({
+      note: "Finding A",
+      source_url: "https://good.example/a",
+    })) as string;
+    expect(out).not.toContain("model call");
+    expect(out).toMatch(/exhaustive/i);
+  });
 });
