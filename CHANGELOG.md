@@ -5,12 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.3.0] - 2026-07-11
-
-### Changed
-
-- Default local model switched from `llama3.2` to `gemma4:e4b` (`ollama pull gemma4:e4b`)
-
 ## [Unreleased]
 
 ### Changed
@@ -20,6 +14,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fresh query, bounded by a hard cap of `2 * (maxWebResearchLoops + 1)` total rounds.
   **Behavior change vs 0.2.x:** restore the old counting with `--count-empty-loops` /
   `COUNT_EMPTY_LOOPS=true` / `countEmptyLoops: true`
+
+## [0.3.0] - 2026-07-11
+
+### Changed
+
+- Default local model switched from `llama3.2` to `gemma4:e4b` (`ollama pull gemma4:e4b`)
 
 ## [0.2.1] - 2026-07-11
 
