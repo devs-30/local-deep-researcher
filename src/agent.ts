@@ -61,34 +61,53 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
       onToolEvent: deps.onToolEvent ? (phase) => deps.onToolEvent?.(phase, modelCalls) : undefined,
       budget: () => ({ used: modelCalls, max: cfg.maxAgentSteps }),
     };
-    const agent = createAgent({
-      model,
-      tools: createAgentTools(ctx),
-      systemPrompt: prompts.agentInstructions({
-        researchTopic: state.researchTopic,
-        currentDate: prompts.getCurrentDate(),
-        maxAgentSteps: cfg.maxAgentSteps,
-      }),
-      // Order matters: the limiter's beforeModel must run first so its jump to
-      // the end prevents the counter from counting a call that never happens.
-      middleware: [
-        modelCallLimitMiddleware({ runLimit: cfg.maxAgentSteps, exitBehavior: "end" }),
-        modelCallCounter,
-      ],
+    const tools = createAgentTools(ctx);
+    const systemPrompt = prompts.agentInstructions({
+      researchTopic: state.researchTopic,
+      currentDate: prompts.getCurrentDate(),
+      maxAgentSteps: cfg.maxAgentSteps,
     });
-    const result = await agent.invoke(
-      { messages: [new HumanMessage(`Research this topic: ${state.researchTopic}`)] },
-      // Termination is owned by modelCallLimitMiddleware; the recursion limit is
-      // only a runaway backstop. Each loop iteration costs ~3 super-steps (model +
-      // tools + middleware hooks), so leave generous headroom above that.
-      { recursionLimit: cfg.maxAgentSteps * 10 + 50 },
-    );
-    // The middleware injects one extra "ai"-typed stop-notice message when it cuts
-    // the run off, so aiCount > maxAgentSteps is the only reliable signal that the
-    // run was capped rather than finished naturally on the budget-th call.
-    const aiCount = (result.messages as BaseMessage[]).filter((m) => m.getType() === "ai").length;
-    const capped = aiCount > cfg.maxAgentSteps;
-    const stepsUsed = Math.min(aiCount, cfg.maxAgentSteps);
+    // The agent must not give up while it has zero findings and unspent budget:
+    // models tend to quit after a few fruitless searches. Each pass gets the
+    // remaining budget as its run limit; the pass prompt tells a re-engaged
+    // agent to vary its queries. Positive exit: notes exist. Hard exit: budget.
+    let lastAiCount: number;
+    let lastRunLimit: number;
+    for (let attempt = 1; ; attempt += 1) {
+      const remaining = cfg.maxAgentSteps - modelCalls;
+      lastRunLimit = remaining;
+      const agent = createAgent({
+        model,
+        tools,
+        systemPrompt,
+        // Order matters: the limiter's beforeModel must run first so its jump to
+        // the end prevents the counter from counting a call that never happens.
+        middleware: [
+          modelCallLimitMiddleware({ runLimit: remaining, exitBehavior: "end" }),
+          modelCallCounter,
+        ],
+      });
+      const content =
+        attempt === 1
+          ? `Research this topic: ${state.researchTopic}`
+          : `Research this topic: ${state.researchTopic}\n\nYour previous attempt recorded no findings. ${remaining} of ${cfg.maxAgentSteps} model calls remain. Try DIFFERENT search queries and angles (already-seen URLs are filtered out automatically). Record a negative finding only as a last resort when the budget is nearly exhausted.`;
+      const result = await agent.invoke(
+        { messages: [new HumanMessage(content)] },
+        // Termination is owned by modelCallLimitMiddleware; the recursion limit
+        // is only a runaway backstop. Each loop iteration costs ~3 super-steps
+        // (model + tools + middleware hooks), so leave generous headroom.
+        { recursionLimit: cfg.maxAgentSteps * 10 + 50 },
+      );
+      lastAiCount = (result.messages as BaseMessage[]).filter((m) => m.getType() === "ai").length;
+      if (ctx.notes.length > 0 || modelCalls >= cfg.maxAgentSteps) break;
+      deps.warn(
+        `agentLoop: attempt ${attempt} ended with no findings, re-engaging with ${cfg.maxAgentSteps - modelCalls} calls left`,
+      );
+    }
+    // The middleware injects one extra "ai"-typed stop-notice message when it
+    // cuts a run off, so aiCount > that run's limit is the capped signal.
+    const capped = lastAiCount > lastRunLimit;
+    const stepsUsed = Math.min(modelCalls, cfg.maxAgentSteps);
     if (capped) {
       deps.warn(
         `agentLoop: reached maxAgentSteps=${cfg.maxAgentSteps}, finalizing with ${ctx.notes.length} notes`,

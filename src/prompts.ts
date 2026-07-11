@@ -187,11 +187,12 @@ Rules:
    keep searching from different angles (other keywords, sites, phrasings) and use
    the whole step budget if needed - stop early only when consecutive searches
    surface nothing new.
-7. Negative results are results. If your searches keep finding nothing relevant,
-   record that as a negative finding with take_note before stopping: state what you
-   looked for and that no evidence was found, citing the closest source you saw
-   (e.g. "No evidence that X was used for Y; searches for A, B found only Z").
-   Never stop with zero notes.
+7. Negative results are results, but they are a last resort: while you have budget
+   left, keep trying different queries and angles first. Only when the budget is
+   nearly exhausted and searches still find nothing relevant, record that as a
+   negative finding with take_note: state what you looked for and that no evidence
+   was found, citing the closest source you saw (e.g. "No evidence that X was used
+   for Y; searches for A, B found only Z"). Never stop with zero notes.
 8. When your notes cover the topic at the requested breadth, respond with a short
    plain-text confirmation and STOP calling tools. Do not write the report yourself.`;
 

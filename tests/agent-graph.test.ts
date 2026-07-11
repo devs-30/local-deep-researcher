@@ -7,6 +7,7 @@ import type { SearchResult } from "../src/search/types";
 
 class FakeToolCallingModel extends BaseChatModel {
   private queue: AIMessage[];
+  calls = 0;
   constructor(queue: AIMessage[]) {
     super({});
     this.queue = [...queue];
@@ -18,6 +19,7 @@ class FakeToolCallingModel extends BaseChatModel {
     return this;
   }
   async _generate(_messages: BaseMessage[]): Promise<ChatResult> {
+    this.calls += 1;
     const message = this.queue.shift() ?? new AIMessage("Research complete.");
     return { generations: [{ message, text: "" }] };
   }
@@ -121,12 +123,39 @@ describe("agentic graph", () => {
     expect(d.warn).toHaveBeenCalledWith(expect.stringContaining("maxAgentSteps"));
   });
 
-  it("throws AgentResearchError when the loop ends with zero notes", async () => {
-    const model = new FakeToolCallingModel([new AIMessage("Nothing to do.")]);
+  it("re-engages the agent when it quits early with zero notes", async () => {
+    // Attempt 1 gives up immediately; the loop must re-engage with the
+    // remaining budget instead of failing, and attempt 2 delivers a note.
+    const model = new FakeToolCallingModel([
+      new AIMessage("Nothing found, giving up."),
+      searchCall("c1", "alpha"),
+      noteCall("c2", "Alpha does X", "https://alpha.example/1", "Alpha"),
+      new AIMessage("Done."),
+    ]);
     const graph = buildAgenticGraph(deps(model));
-    await expect(graph.invoke({ researchTopic: "alpha systems" }, CONFIG)).rejects.toThrow(
-      AgentResearchError,
+    const result = await graph.invoke(
+      { researchTopic: "alpha systems" },
+      { configurable: { ...CONFIG.configurable, maxAgentSteps: 6 } },
     );
+    expect(result.notes).toHaveLength(1);
+    expect(result.runningSummary).toContain("## Summary");
+    expect(model.calls).toBe(4);
+  });
+
+  it("throws AgentResearchError only after the whole budget is spent on empty attempts", async () => {
+    // Model never calls a tool; the loop must keep re-engaging until the
+    // budget is exhausted, then fail - not after the first empty attempt.
+    const model = new FakeToolCallingModel(
+      Array.from({ length: 10 }, (_, i) => new AIMessage(`Nothing to do (${i}).`)),
+    );
+    const graph = buildAgenticGraph(deps(model));
+    await expect(
+      graph.invoke(
+        { researchTopic: "alpha systems" },
+        { configurable: { ...CONFIG.configurable, maxAgentSteps: 3 } },
+      ),
+    ).rejects.toThrow(AgentResearchError);
+    expect(model.calls).toBe(3);
   });
 
   it("emits tool events through deps.onToolEvent with the model-call number", async () => {
