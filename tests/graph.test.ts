@@ -561,8 +561,11 @@ describe("loop budget", () => {
     );
     // The reflection after the empty round 1 must see the failed query "q1".
     const reflectionPrompts = systemPrompts.filter((p) => p.includes("expert research assistant"));
-    expect(reflectionPrompts.length).toBeGreaterThan(0);
+    expect(reflectionPrompts.length).toBe(2);
     expect(reflectionPrompts[0]).toContain("<FAILED_QUERIES>");
     expect(reflectionPrompts[0]).toContain("q1");
+    // failedQueries accumulates: the reflection after the later productive round still
+    // carries the earlier failed query.
+    expect(reflectionPrompts[1]).toContain("q1");
   });
 });

@@ -74,7 +74,7 @@ export function reflectionInstructions(params: {
   researchTopic: string;
   failedQueries?: string[];
 }): string {
-  const failed = params.failedQueries ?? [];
+  const failed = [...new Set(params.failedQueries ?? [])];
   const failedBlock =
     failed.length > 0
       ? `
