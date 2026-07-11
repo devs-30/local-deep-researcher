@@ -186,4 +186,9 @@ Requirements:
 - Start directly with the content (no title, no preamble).
 - Organize related findings into coherent paragraphs; do not enumerate the notes one by one.
 - Keep every factual claim traceable to the notes; do not invent facts.
-- Do NOT include a sources or references section; sources are appended separately.`;
+- Do NOT include a sources or references section; sources are appended separately.
+- Write in the language of the user input.
+- If the user input contains explicit instructions about the shape of the answer
+  (for example: only a list, a table, a length limit), those instructions take precedence
+  over the defaults above. Follow them exactly, while still using only the notes and
+  still omitting a sources section.`;

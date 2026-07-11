@@ -105,4 +105,9 @@ describe("reportWriterInstructions", () => {
     expect(prompts.reportWriterInstructions).toContain("report");
     expect(prompts.reportWriterInstructions).toMatch(/do not include a sources/i);
   });
+
+  it("gives user output-format instructions precedence over the defaults", () => {
+    expect(prompts.reportWriterInstructions).toContain("take precedence");
+    expect(prompts.reportWriterInstructions).toMatch(/language of the user input/i);
+  });
 });
