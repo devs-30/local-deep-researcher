@@ -24,7 +24,7 @@ Usage:
 Options:
   --max-loops <n>        Research loops (default 3; N yields N+1 search rounds)
   --provider <name>      ollama | openai_compatible (default ollama)
-  --model <name>         Model name (default llama3.2, env LOCAL_LLM)
+  --model <name>         Model name (default gemma4:e4b, env LOCAL_LLM)
   --base-url <url>       LLM base URL (Ollama or OpenAI-compatible endpoint)
   --search-api <name>    duckduckgo | tavily | perplexity | searxng (default duckduckgo)
   --fetch-full-page      Fetch full page content for each source

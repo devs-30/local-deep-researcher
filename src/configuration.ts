@@ -15,7 +15,7 @@ const boolFromString = z.preprocess((value) => {
 
 export const ConfigurationSchema = z.object({
   llmProvider: z.enum(["ollama", "openai_compatible"]).default("ollama"),
-  localLlm: z.string().default("llama3.2"),
+  localLlm: z.string().default("gemma4:e4b"),
   ollamaBaseUrl: z.string().default("http://localhost:11434"),
   openaiCompatibleBaseUrl: z.string().optional(),
   openaiCompatibleApiKey: z.string().optional(),

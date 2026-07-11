@@ -43,7 +43,7 @@ describe("ensureConfiguration", () => {
   it("returns defaults with no input", () => {
     const cfg = ensureConfiguration();
     expect(cfg.llmProvider).toBe("ollama");
-    expect(cfg.localLlm).toBe("llama3.2");
+    expect(cfg.localLlm).toBe("gemma4:e4b");
     expect(cfg.ollamaBaseUrl).toBe("http://localhost:11434");
     expect(cfg.searchApi).toBe("duckduckgo");
     expect(cfg.maxWebResearchLoops).toBe(3);

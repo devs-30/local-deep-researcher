@@ -44,7 +44,7 @@ generate query → web search → grade sources → summarize → reflect on gap
 ## Quickstart (CLI)
 
 ```bash
-ollama pull llama3.2
+ollama pull gemma4:e4b
 npx @devs30/local-deep-researcher "history of liquid rocket engines"
 ```
 
@@ -57,7 +57,7 @@ needed - the default search provider is DuckDuckGo.
 | ----------------------- | ---------------------------------------------------------------------------- |
 | `--max-loops <n>`       | Research loops (default `3`; `N` yields `N+1` search rounds)                 |
 | `--provider <name>`     | `ollama` \| `openai_compatible` (default `ollama`)                           |
-| `--model <name>`        | Model name (default `llama3.2`, env `LOCAL_LLM`)                             |
+| `--model <name>`        | Model name (default `gemma4:e4b`, env `LOCAL_LLM`)                           |
 | `--base-url <url>`      | LLM base URL (Ollama or OpenAI-compatible endpoint)                          |
 | `--search-api <name>`   | `duckduckgo` \| `tavily` \| `perplexity` \| `searxng` (default `duckduckgo`) |
 | `--fetch-full-page`     | Fetch full page content for each source                                      |
@@ -151,7 +151,7 @@ precedence over environment variables, which take precedence over the defaults b
 | Config key                | Env var                      | Default                                               |
 | ------------------------- | ---------------------------- | ----------------------------------------------------- |
 | `llmProvider`             | `LLM_PROVIDER`               | `ollama`                                              |
-| `localLlm`                | `LOCAL_LLM`                  | `llama3.2`                                            |
+| `localLlm`                | `LOCAL_LLM`                  | `gemma4:e4b`                                          |
 | `ollamaBaseUrl`           | `OLLAMA_BASE_URL`            | `http://localhost:11434`                              |
 | `openaiCompatibleBaseUrl` | `OPENAI_COMPATIBLE_BASE_URL` | _(none, required if `llmProvider=openai_compatible`)_ |
 | `openaiCompatibleApiKey`  | `OPENAI_COMPATIBLE_API_KEY`  | _(none)_                                              |
