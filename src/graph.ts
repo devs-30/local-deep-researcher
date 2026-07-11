@@ -88,8 +88,18 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
       results = [];
     }
     return {
-      sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
+      pendingResults: results,
       researchLoopCount: state.researchLoopCount + 1,
+    };
+  }
+
+  async function gradeSources(state: SummaryState, config?: RunnableConfig) {
+    const cfg = ensureConfiguration(config);
+    const results = state.pendingResults;
+    return {
+      pendingResults: [],
+      gradedUrls: results.map((r) => r.url),
+      sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
       webResearchResults: [
         deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
       ],
@@ -159,12 +169,14 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
   return new StateGraph(SummaryStateAnnotation)
     .addNode("generateQuery", generateQuery)
     .addNode("webResearch", webResearch)
+    .addNode("gradeSources", gradeSources)
     .addNode("summarizeSources", summarizeSources)
     .addNode("reflectOnSummary", reflectOnSummary)
     .addNode("finalizeSummary", finalizeSummary)
     .addEdge(START, "generateQuery")
     .addEdge("generateQuery", "webResearch")
-    .addEdge("webResearch", "summarizeSources")
+    .addEdge("webResearch", "gradeSources")
+    .addEdge("gradeSources", "summarizeSources")
     .addEdge("summarizeSources", "reflectOnSummary")
     .addConditionalEdges("reflectOnSummary", routeResearch, ["webResearch", "finalizeSummary"])
     .addEdge("finalizeSummary", END)

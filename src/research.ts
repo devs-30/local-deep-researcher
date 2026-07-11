@@ -19,7 +19,7 @@ export interface ResearchReport {
 }
 
 export type ResearchPhase =
-  "generating_query" | "searching" | "summarizing" | "reflecting" | "finalizing";
+  "generating_query" | "searching" | "grading" | "summarizing" | "reflecting" | "finalizing";
 
 export interface ProgressEvent {
   phase: ResearchPhase;
@@ -34,6 +34,7 @@ export interface ResearchHooks {
 const PHASE_BY_NODE: Record<string, ResearchPhase> = {
   generateQuery: "generating_query",
   webResearch: "searching",
+  gradeSources: "grading",
   summarizeSources: "summarizing",
   reflectOnSummary: "reflecting",
   finalizeSummary: "finalizing",
@@ -68,6 +69,8 @@ export async function research(
     for (const [node, update] of Object.entries(chunk as Record<string, Record<string, unknown>>)) {
       if (node === "webResearch") {
         loop = typeof update.researchLoopCount === "number" ? update.researchLoopCount : loop;
+      }
+      if (node === "gradeSources") {
         rawSourceBlocks.push(...((update.sourcesGathered as string[] | undefined) ?? []));
       }
       if (node === "summarizeSources") summary = String(update.runningSummary ?? summary);
