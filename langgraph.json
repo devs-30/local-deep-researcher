@@ -1,0 +1,8 @@
+{
+  "node_version": "20",
+  "dependencies": ["."],
+  "graphs": {
+    "local_deep_researcher": "./src/graph.ts:graph"
+  },
+  "env": ".env"
+}
