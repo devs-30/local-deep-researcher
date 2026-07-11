@@ -104,8 +104,9 @@ command = "npx"
 args = ["-y", "@devs30/local-deep-researcher", "mcp"]
 ```
 
-The server exposes a single tool, `deep_research`, which takes `topic` (required), and optional
-`max_loops` and `search_api` parameters, and streams progress notifications while it runs.
+The server exposes two tools: `deep_research`, which takes `topic` (required), and optional
+`max_loops` and `search_api` parameters, and streams progress notifications while it runs; and
+`deep_research_agent`, documented in the [Agentic mode](#agentic-mode) section below.
 
 ## Library API
 
