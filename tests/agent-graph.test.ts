@@ -99,6 +99,28 @@ describe("agentic graph", () => {
     expect(d.warn).toHaveBeenCalledWith(expect.stringContaining("maxAgentSteps"));
   });
 
+  it("caps gracefully at larger budgets (regression: middleware hooks consume graph steps)", async () => {
+    // With maxAgentSteps=8 a real run hit "Recursion limit of 26" because each
+    // loop iteration costs ~3 super-steps (model + tools + middleware hooks),
+    // not the 2 the old maxAgentSteps * 2 + 10 formula assumed. The middleware,
+    // not the recursion limit, must be what ends the run.
+    const endless = Array.from({ length: 40 }, (_, i) =>
+      i % 2 === 0
+        ? searchCall(`s${i}`, `query ${i}`)
+        : noteCall(`n${i}`, `Fact ${i}`, `https://alpha.example/${i}`, "Alpha"),
+    );
+    const model = new FakeToolCallingModel(endless);
+    const d = deps(model);
+    const graph = buildAgenticGraph(d);
+    const result = await graph.invoke(
+      { researchTopic: "alpha systems" },
+      { configurable: { ...CONFIG.configurable, maxAgentSteps: 8 } },
+    );
+    expect(result.stepsUsed).toBeLessThanOrEqual(8);
+    expect(result.runningSummary).toContain("## Summary");
+    expect(d.warn).toHaveBeenCalledWith(expect.stringContaining("maxAgentSteps"));
+  });
+
   it("throws AgentResearchError when the loop ends with zero notes", async () => {
     const model = new FakeToolCallingModel([new AIMessage("Nothing to do.")]);
     const graph = buildAgenticGraph(deps(model));

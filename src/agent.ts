@@ -56,7 +56,10 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
     });
     const result = await agent.invoke(
       { messages: [new HumanMessage(`Research this topic: ${state.researchTopic}`)] },
-      { recursionLimit: cfg.maxAgentSteps * 2 + 10 },
+      // Termination is owned by modelCallLimitMiddleware; the recursion limit is
+      // only a runaway backstop. Each loop iteration costs ~3 super-steps (model +
+      // tools + middleware hooks), so leave generous headroom above that.
+      { recursionLimit: cfg.maxAgentSteps * 5 + 20 },
     );
     // The middleware injects one extra "ai"-typed stop-notice message when it cuts
     // the run off, so aiCount > maxAgentSteps is the only reliable signal that the
