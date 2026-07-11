@@ -64,4 +64,18 @@ describe("MCP server", () => {
       expect.anything(),
     );
   });
+
+  it("forwards count_empty_loops to the research configurable", async () => {
+    const spy = vi.fn(fakeResearch);
+    const client = await connectedClient({ researchFn: spy, preflight: async () => {} });
+    await client.callTool({
+      name: "deep_research",
+      arguments: { topic: "t", count_empty_loops: true },
+    });
+    expect(spy).toHaveBeenCalledWith(
+      "t",
+      expect.objectContaining({ countEmptyLoops: true }),
+      expect.anything(),
+    );
+  });
 });

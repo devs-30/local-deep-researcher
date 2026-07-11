@@ -40,15 +40,23 @@ export function createMcpServer(deps: McpDeps = {}): McpServer {
           .string()
           .optional()
           .describe("Comma-separated domains to always reject"),
+        count_empty_loops: z
+          .boolean()
+          .optional()
+          .describe("Empty rounds also consume the loop budget (default false)"),
       },
     },
-    async ({ topic, max_loops, search_api, grade_sources, source_domain_blocklist }, extra) => {
+    async (
+      { topic, max_loops, search_api, grade_sources, source_domain_blocklist, count_empty_loops },
+      extra,
+    ) => {
       const configurable: Record<string, unknown> = {};
       if (max_loops !== undefined) configurable.maxWebResearchLoops = max_loops;
       if (search_api !== undefined) configurable.searchApi = search_api;
       if (grade_sources !== undefined) configurable.gradeSources = grade_sources;
       if (source_domain_blocklist !== undefined)
         configurable.sourceDomainBlocklist = source_domain_blocklist;
+      if (count_empty_loops !== undefined) configurable.countEmptyLoops = count_empty_loops;
       try {
         const cfg = ensureConfiguration({ configurable });
         validateConfiguration(cfg);
