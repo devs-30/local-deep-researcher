@@ -101,13 +101,16 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     const results = state.pendingResults;
     if (!cfg.gradeSources) {
       // Pass-through: byte-identical to pre-grading behavior, zero LLM calls.
+      const passThroughEmpty = results.length === 0;
       return {
         pendingResults: [],
+        lastRoundEmpty: passThroughEmpty,
+        failedQueries: passThroughEmpty ? [state.searchQuery] : [],
         sourcesGathered: results.length > 0 ? [formatSources(results)] : [],
-        webResearchResults: [
-          deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
-        ],
-        productiveLoopCount: state.productiveLoopCount + (results.length > 0 ? 1 : 0),
+        webResearchResults: passThroughEmpty
+          ? []
+          : [deduplicateAndFormatSources(results, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage)],
+        productiveLoopCount: state.productiveLoopCount + (passThroughEmpty ? 0 : 1),
       };
     }
     const { kept: candidates, dropped } = applyHeuristics(results, {
@@ -157,14 +160,17 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
         `gradeSources: all ${results.length} sources rejected this round; continuing with an empty round`,
       );
     }
+    const roundEmpty = kept.length === 0;
     return {
       pendingResults: [],
       gradedUrls: results.map((r) => r.url),
-      sourcesGathered: kept.length > 0 ? [formatSources(kept)] : [],
-      webResearchResults: [
-        deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage),
-      ],
-      productiveLoopCount: state.productiveLoopCount + (kept.length > 0 ? 1 : 0),
+      lastRoundEmpty: roundEmpty,
+      failedQueries: roundEmpty ? [state.searchQuery] : [],
+      sourcesGathered: roundEmpty ? [] : [formatSources(kept)],
+      webResearchResults: roundEmpty
+        ? []
+        : [deduplicateAndFormatSources(kept, MAX_TOKENS_PER_SOURCE, cfg.fetchFullPage)],
+      productiveLoopCount: state.productiveLoopCount + (roundEmpty ? 0 : 1),
     };
   }
 
@@ -191,7 +197,7 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     const result = await llm.invoke([
       new SystemMessage(prompts.reflectionInstructions({ researchTopic: state.researchTopic })),
       new HumanMessage(
-        `${prompts.jsonModeReflectionInstructions}\n\nReflect on our existing knowledge: \n === \n ${state.runningSummary}, \n === \n And now identify a knowledge gap and generate a follow-up web search query:`,
+        `${prompts.jsonModeReflectionInstructions}\n\nReflect on our existing knowledge: \n === \n ${state.runningSummary ?? ""}, \n === \n And now identify a knowledge gap and generate a follow-up web search query:`,
       ),
     ]);
     let content = contentToString(result.content);
@@ -215,8 +221,13 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     }
     const allSources = unique.join("\n");
     return {
-      runningSummary: `## Summary\n${state.runningSummary}\n\n ### Sources:\n${allSources}`,
+      runningSummary: `## Summary\n${state.runningSummary ?? ""}\n\n ### Sources:\n${allSources}`,
     };
+  }
+
+  function routeAfterGrading(state: SummaryState): "summarizeSources" | "reflectOnSummary" {
+    // Empty rounds have nothing to fold into the summary - go straight to reflection.
+    return state.lastRoundEmpty ? "reflectOnSummary" : "summarizeSources";
   }
 
   function routeResearch(
@@ -241,7 +252,10 @@ export function buildGraph(overrides: Partial<GraphDeps> = {}) {
     .addEdge(START, "generateQuery")
     .addEdge("generateQuery", "webResearch")
     .addEdge("webResearch", "gradeSources")
-    .addEdge("gradeSources", "summarizeSources")
+    .addConditionalEdges("gradeSources", routeAfterGrading, [
+      "summarizeSources",
+      "reflectOnSummary",
+    ])
     .addEdge("summarizeSources", "reflectOnSummary")
     .addConditionalEdges("reflectOnSummary", routeResearch, ["webResearch", "finalizeSummary"])
     .addEdge("finalizeSummary", END)

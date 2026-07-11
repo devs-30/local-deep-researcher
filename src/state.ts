@@ -28,6 +28,14 @@ export const SummaryStateAnnotation = Annotation.Root({
     reducer: (_current, update) => update,
     default: () => 0,
   }),
+  lastRoundEmpty: Annotation<boolean>({
+    reducer: (_current, update) => update,
+    default: () => false,
+  }),
+  failedQueries: Annotation<string[]>({
+    reducer: (current, update) => current.concat(update),
+    default: () => [],
+  }),
   runningSummary: Annotation<string>(),
 });
 

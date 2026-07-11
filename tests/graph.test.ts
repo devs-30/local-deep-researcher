@@ -355,11 +355,10 @@ describe("loop budget", () => {
     const llm = new FakeListChatModel({
       responses: [
         '{"query": "q1", "rationale": "r"}',
-        '{"relevant": "no", "reason": "junk"}', // round 1: rejected -> free
-        "A summary.",
+        '{"relevant": "no", "reason": "junk"}', // round 1: rejected -> skip summarize
         '{"knowledge_gap": "g", "follow_up_query": "q2"}',
         '{"relevant": "yes", "reason": "ok"}', // round 2: productive
-        "A better summary.",
+        "A summary.",
         '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
       ],
     });
@@ -385,11 +384,9 @@ describe("loop budget", () => {
     const llm = new FakeListChatModel({
       responses: [
         '{"query": "q1", "rationale": "r"}',
-        '{"relevant": "no", "reason": "junk"}', // round 1
-        "A summary.",
+        '{"relevant": "no", "reason": "junk"}', // round 1: empty -> skip summarize
         '{"knowledge_gap": "g", "follow_up_query": "q2"}',
-        '{"relevant": "no", "reason": "junk"}', // round 2 (cap = 2 for max=0)
-        "A summary again.",
+        '{"relevant": "no", "reason": "junk"}', // round 2: empty (cap = 2 for max=0)
         '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
       ],
     });
@@ -414,7 +411,6 @@ describe("loop budget", () => {
       responses: [
         '{"query": "q1", "rationale": "r"}',
         '{"relevant": "no", "reason": "junk"}',
-        "A summary.",
         '{"knowledge_gap": "g", "follow_up_query": "q2"}',
       ],
     });
@@ -445,9 +441,8 @@ describe("loop budget", () => {
     const llm = new FakeListChatModel({
       responses: [
         '{"query": "q1", "rationale": "r"}',
-        "A summary.", // round 1 (empty round: summarize + reflect still run)
         '{"knowledge_gap": "g", "follow_up_query": "q2"}',
-        "A better summary.", // round 2
+        "A better summary.",
         '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
       ],
     });
@@ -467,5 +462,72 @@ describe("loop budget", () => {
     expect(state.researchLoopCount).toBe(2);
     expect(state.productiveLoopCount).toBe(1);
     expect(state.sourcesGathered.join("\n")).toContain("q2");
+  });
+
+  it("skips summarizeSources on an empty round", async () => {
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        '{"relevant": "no", "reason": "junk"}',
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+        '{"relevant": "yes", "reason": "ok"}',
+        "A summary.",
+        '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
+      ],
+    });
+    let llmNodes = 0;
+    const graph = buildGraph({
+      getLlm: () => {
+        llmNodes++;
+        return llm;
+      },
+      getSearchProvider: () => uniqueUrlSearch,
+      retryDelayMs: 0,
+      warn: () => {},
+    });
+    const state = await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
+    );
+    // generateQuery + (grade, reflect) for the empty round + (grade, summarize, reflect)
+    // for the productive one = 6 LLM-using node executions; 7 would mean summarize ran
+    // on the empty round.
+    expect(llmNodes).toBe(6);
+    expect(state.lastRoundEmpty).toBe(false);
+    expect(state.failedQueries).toEqual(["q1"]);
+  });
+
+  it("produces an honestly empty report when every round is empty", async () => {
+    const llm = new FakeListChatModel({
+      responses: [
+        '{"query": "q1", "rationale": "r"}',
+        '{"relevant": "no", "reason": "junk"}',
+        '{"knowledge_gap": "g", "follow_up_query": "q2"}',
+        '{"relevant": "no", "reason": "junk"}',
+        '{"knowledge_gap": "g2", "follow_up_query": "q3"}',
+      ],
+    });
+    let llmNodes = 0;
+    const graph = buildGraph({
+      getLlm: () => {
+        llmNodes++;
+        return llm;
+      },
+      getSearchProvider: () => uniqueUrlSearch,
+      retryDelayMs: 0,
+      warn: () => {},
+    });
+    const state = await graph.invoke(
+      { researchTopic: "t" },
+      { configurable: { maxWebResearchLoops: 0 }, recursionLimit: 50 },
+    );
+    // generateQuery + 2 x (grade, reflect); no summarize ever ran.
+    expect(llmNodes).toBe(5);
+    // The summary was never written by an LLM: no hallucinated content.
+    expect(state.runningSummary.startsWith("## Summary")).toBe(true);
+    expect(state.runningSummary).not.toContain("A summary");
+    expect(state.failedQueries).toEqual(["q1", "q2"]);
+    expect(state.lastRoundEmpty).toBe(true);
+    expect(state.webResearchResults).toHaveLength(0);
   });
 });
