@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   getCurrentDate,
+  jsonModeGraderInstructions,
   jsonModeQueryInstructions,
   jsonModeReflectionInstructions,
   queryWriterInstructions,
   reflectionInstructions,
+  sourceGraderInstructions,
   summarizerInstructions,
 } from "../src/prompts";
 
@@ -34,5 +36,29 @@ describe("prompts", () => {
     expect(jsonModeReflectionInstructions).toContain("knowledge_gap");
     expect(jsonModeReflectionInstructions).toContain("follow_up_query");
     expect(summarizerInstructions).toContain("<GOAL>");
+  });
+});
+
+describe("sourceGraderInstructions", () => {
+  it("embeds the topic and the query", () => {
+    const text = sourceGraderInstructions({
+      researchTopic: "quantum computing",
+      searchQuery: "qubit error correction",
+    });
+    expect(text).toContain("quantum computing");
+    expect(text).toContain("qubit error correction");
+  });
+
+  it("is lenient by instruction", () => {
+    const text = sourceGraderInstructions({ researchTopic: "t", searchQuery: "q" });
+    expect(text.toLowerCase()).toContain("when in doubt");
+  });
+});
+
+describe("jsonModeGraderInstructions", () => {
+  it("requires the relevant key with yes/no values", () => {
+    expect(jsonModeGraderInstructions).toContain('"relevant"');
+    expect(jsonModeGraderInstructions).toContain('"yes"');
+    expect(jsonModeGraderInstructions).toContain('"no"');
   });
 });
