@@ -29,7 +29,12 @@ generate query → web search → grade sources → summarize → reflect on gap
    (domain blocklist, thin/empty content, cross-loop URL dedup — no LLM cost), then a per-source
    binary LLM relevance check ("when in doubt, keep"). Rejected sources never reach the summary or
    final bibliography; every drop is logged to stderr with a reason. If a whole round is rejected,
-   the research loop simply tries a different query next iteration.
+   the research loop tries a different query next iteration - these empty rounds (all sources
+   rejected or a failed search) get free retries that don't consume the budget. The budget counts
+   only productive rounds (at least one source kept), up to a hard cap of `2 * (maxWebResearchLoops + 1)`
+   total rounds. Use `--count-empty-loops` to restore the v0.2.x behavior where empty rounds
+   consume budget. Note that MCP progress `loop` counts all attempts and can exceed `total` when
+   free retries happen.
 4. **Summarize** - the new results are folded into a running summary.
 5. **Reflect** - the LLM looks for knowledge gaps and produces a follow-up query.
 6. Steps 2–5 repeat until the configured loop count is reached (default **3** loops), then the
@@ -53,21 +58,22 @@ needed - the default search provider is DuckDuckGo.
 
 ### CLI flags
 
-| Flag                    | Description                                                                  |
-| ----------------------- | ---------------------------------------------------------------------------- |
-| `--max-loops <n>`       | Research loops (default `3`; `N` yields `N+1` search rounds)                 |
-| `--provider <name>`     | `ollama` \| `openai_compatible` (default `ollama`)                           |
-| `--model <name>`        | Model name (default `gemma4:e4b`, env `LOCAL_LLM`)                           |
-| `--base-url <url>`      | LLM base URL (Ollama or OpenAI-compatible endpoint)                          |
-| `--search-api <name>`   | `duckduckgo` \| `tavily` \| `perplexity` \| `searxng` (default `duckduckgo`) |
-| `--fetch-full-page`     | Fetch full page content for each source                                      |
-| `--no-grade-sources`    | Disable source grading (credibility + relevance filter)                      |
-| `--blocklist <domains>` | Comma-separated domains to always reject                                     |
-| `-o, --output <file>`   | Write the report to a file instead of stdout                                 |
-| `--json`                | Output `{"summary", "sources"}` JSON instead of markdown                     |
-| `-q, --quiet`           | Suppress progress output on stderr                                           |
-| `-h, --help`            | Show help                                                                    |
-| `-v, --version`         | Show version                                                                 |
+| Flag                    | Description                                                                   |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `--max-loops <n>`       | Research loops (default `3`; `N` yields `N+1` search rounds)                  |
+| `--provider <name>`     | `ollama` \| `openai_compatible` (default `ollama`)                            |
+| `--model <name>`        | Model name (default `gemma4:e4b`, env `LOCAL_LLM`)                            |
+| `--base-url <url>`      | LLM base URL (Ollama or OpenAI-compatible endpoint)                           |
+| `--search-api <name>`   | `duckduckgo` \| `tavily` \| `perplexity` \| `searxng` (default `duckduckgo`)  |
+| `--fetch-full-page`     | Fetch full page content for each source                                       |
+| `--no-grade-sources`    | Disable source grading (credibility + relevance filter)                       |
+| `--blocklist <domains>` | Comma-separated domains to always reject                                      |
+| `-o, --output <file>`   | Write the report to a file instead of stdout                                  |
+| `--json`                | Output `{"summary", "sources"}` JSON instead of markdown                      |
+| `-q, --quiet`           | Suppress progress output on stderr                                            |
+| `--count-empty-loops`   | Empty rounds (no sources kept) also consume the loop budget (v0.2.x behavior) |
+| `-h, --help`            | Show help                                                                     |
+| `-v, --version`         | Show version                                                                  |
 
 `local-deep-researcher mcp` starts the MCP stdio server instead of running a one-off research
 task - see [Use as an MCP server](#use-as-an-mcp-server-claude-code--codex) below.
@@ -160,6 +166,7 @@ precedence over environment variables, which take precedence over the defaults b
 | `fetchFullPage`           | `FETCH_FULL_PAGE`            | `false`                                               |
 | `gradeSources`            | `GRADE_SOURCES`              | `true`                                                |
 | `sourceDomainBlocklist`   | `SOURCE_DOMAIN_BLOCKLIST`    | (empty)                                               |
+| `countEmptyLoops`         | `COUNT_EMPTY_LOOPS`          | `false`                                               |
 | `stripThinkingTokens`     | `STRIP_THINKING_TOKENS`      | `true`                                                |
 | `tavilyApiKey`            | `TAVILY_API_KEY`             | _(none, required if `searchApi=tavily`)_              |
 | `perplexityApiKey`        | `PERPLEXITY_API_KEY`         | _(none, required if `searchApi=perplexity`)_          |

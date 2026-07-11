@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Default local model switched from `llama3.2` to `gemma4:e4b` (`ollama pull gemma4:e4b`)
 
+## [Unreleased]
+
+### Changed
+
+- Research-loop budget now counts only productive rounds (at least one source kept after
+  grading). Empty rounds (all sources rejected or a failed search) get free retries with a
+  fresh query, bounded by a hard cap of `2 * (maxWebResearchLoops + 1)` total rounds.
+  **Behavior change vs 0.2.x:** restore the old counting with `--count-empty-loops` /
+  `COUNT_EMPTY_LOOPS=true` / `countEmptyLoops: true`
+
 ## [0.2.1] - 2026-07-11
 
 ### Fixed
