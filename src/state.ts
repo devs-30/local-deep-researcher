@@ -1,4 +1,5 @@
 import { Annotation } from "@langchain/langgraph";
+import type { AgentNote } from "./agent-tools";
 import type { SearchResult } from "./search/types";
 
 export const SummaryStateAnnotation = Annotation.Root({
@@ -40,3 +41,12 @@ export const SummaryStateAnnotation = Annotation.Root({
 });
 
 export type SummaryState = typeof SummaryStateAnnotation.State;
+
+export const AgenticStateAnnotation = Annotation.Root({
+  researchTopic: Annotation<string>(),
+  notes: Annotation<AgentNote[]>({ reducer: (a, b) => a.concat(b), default: () => [] }),
+  stepsUsed: Annotation<number>({ reducer: (_a, b) => b, default: () => 0 }),
+  runningSummary: Annotation<string>(),
+});
+
+export type AgenticState = typeof AgenticStateAnnotation.State;
