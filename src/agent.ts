@@ -96,6 +96,7 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
     }
     return {
       runningSummary: `## Summary\n${summary}\n\n### Sources:\n${sourceLines.join("\n")}`,
+      reportBody: summary,
     };
   }
 

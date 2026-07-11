@@ -145,6 +145,7 @@ export async function researchAgentic(
   );
 
   let markdown = "";
+  let reportBody = "";
   let notes: AgentNote[] = [];
   for await (const chunk of stream) {
     for (const [node, update] of Object.entries(chunk as Record<string, Record<string, unknown>>)) {
@@ -152,7 +153,10 @@ export async function researchAgentic(
         notes = (update.notes as AgentNote[] | undefined) ?? [];
         emit("finalizing");
       }
-      if (node === "finalizeReport") markdown = String(update.runningSummary ?? markdown);
+      if (node === "finalizeReport") {
+        markdown = String(update.runningSummary ?? markdown);
+        reportBody = String(update.reportBody ?? reportBody);
+      }
     }
   }
 
@@ -164,6 +168,6 @@ export async function researchAgentic(
       sources.push({ title: n.sourceTitle ?? n.sourceUrl, url: n.sourceUrl });
     }
   }
-  const summary = markdown.replace(/^## Summary\n/, "").split("\n\n### Sources:")[0] ?? markdown;
+  const summary = reportBody;
   return { summary, sources, markdown };
 }

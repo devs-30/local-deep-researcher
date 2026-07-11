@@ -159,4 +159,49 @@ describe("researchAgentic", () => {
   it("rejects an empty topic", async () => {
     await expect(researchAgentic("  ")).rejects.toThrow(ConfigurationError);
   });
+
+  it("does not truncate the summary when the writer's own text contains the sources delimiter", async () => {
+    const model = new FakeToolCallingModel([
+      new AIMessage({
+        content: "",
+        tool_calls: [{ id: "c1", name: "web_search", args: { query: "alpha" } }],
+      }),
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            id: "c2",
+            name: "take_note",
+            args: {
+              note: "Alpha does X",
+              source_url: "https://alpha.example/1",
+              source_title: "Alpha",
+            },
+          },
+        ],
+      }),
+      new AIMessage("Done."),
+    ]);
+    // The writer's own report text happens to contain the literal delimiter the old
+    // code split on ("\n\n### Sources:"). A structural fix must not lose anything
+    // after that point.
+    const writerText = "Before text.\n\n### Sources:\nfake source line";
+    const writer = new FakeToolCallingModel([new AIMessage(writerText)]);
+    const report = await researchAgentic(
+      "alpha systems",
+      { agentLlm: "fake-agent", localLlm: "fake-writer", maxAgentSteps: 5 },
+      {},
+      {
+        getLlm: (cfg) => (cfg.localLlm === "fake-agent" ? model : writer),
+        getSearchProvider: () => async () => [
+          { title: "Alpha", url: "https://alpha.example/1", content: "alpha ".repeat(50) },
+        ],
+        retryDelayMs: 0,
+        warn: () => {},
+      },
+    );
+    expect(report.summary).toContain("Before text.");
+    expect(report.summary).toContain("fake source line");
+    expect(report.markdown.trim().endsWith("* Alpha : https://alpha.example/1")).toBe(true);
+  });
 });

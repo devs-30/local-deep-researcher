@@ -70,6 +70,7 @@ describe("agentic graph", () => {
     expect(result.runningSummary).toContain("### Sources:");
     // Sources are deduplicated by URL.
     expect(result.runningSummary.match(/alpha\.example/g)).toHaveLength(1);
+    expect(result.reportBody).toBe("Report body.");
   });
 
   it("stops at maxAgentSteps and still finalizes with gathered notes", async () => {

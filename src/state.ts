@@ -47,6 +47,7 @@ export const AgenticStateAnnotation = Annotation.Root({
   notes: Annotation<AgentNote[]>({ reducer: (a, b) => a.concat(b), default: () => [] }),
   stepsUsed: Annotation<number>({ reducer: (_a, b) => b, default: () => 0 }),
   runningSummary: Annotation<string>(),
+  reportBody: Annotation<string>(),
 });
 
 export type AgenticState = typeof AgenticStateAnnotation.State;
