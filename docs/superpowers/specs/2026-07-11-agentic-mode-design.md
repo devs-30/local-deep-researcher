@@ -51,7 +51,7 @@ Creates a per-run `createAgent` instance:
 - tools: `web_search`, `fetch_page`, `take_note` built in the node closure sharing a
   per-run context (notes array, seen-URL set, search provider, progress hooks),
 - systemPrompt: new `prompts.agentInstructions({ researchTopic, currentDate,
-  maxAgentSteps })` - search first, fetch pages when needed, record findings with
+maxAgentSteps })` - search first, fetch pages when needed, record findings with
   source URLs, stop when the topic is covered,
 - middleware: built-in model-call limit set to `cfg.maxAgentSteps`; on limit the loop
   ends gracefully and the graph proceeds to the report.
@@ -82,20 +82,20 @@ next to `loop`/`maxLoops`).
 
 ## Components
 
-| File | Change |
-|---|---|
-| `src/agent.ts` | new: `buildAgenticGraph()`, exported `agenticGraph` for Studio |
-| `src/agent-tools.ts` | new: factories for the 3 tools with per-run context |
-| `src/prompts.ts` | add `agentInstructions`, `reportWriterInstructions` |
-| `src/state.ts` | add `AgenticStateAnnotation` |
-| `src/research.ts` | add `researchAgentic(topic, options, hooks, deps)` mirroring `research()` |
-| `src/configuration.ts` | add `agentLlm` (optional, env `AGENT_LLM`), `maxAgentSteps` (default 20, min 1, env `MAX_AGENT_STEPS`) |
-| `src/preflight.ts` | add agent-model tool-calling check |
-| `src/cli-args.ts`, `src/cli.ts` | add `agent` subcommand |
-| `src/mcp.ts` | add `deep_research_agent` tool |
-| `src/index.ts` | export `researchAgentic` and new types |
-| `langgraph.json` | add `"local_deep_researcher_agent": "./src/agent.ts:agenticGraph"` |
-| `package.json` | add `langchain@^1` |
+| File                            | Change                                                                                                 |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `src/agent.ts`                  | new: `buildAgenticGraph()`, exported `agenticGraph` for Studio                                         |
+| `src/agent-tools.ts`            | new: factories for the 3 tools with per-run context                                                    |
+| `src/prompts.ts`                | add `agentInstructions`, `reportWriterInstructions`                                                    |
+| `src/state.ts`                  | add `AgenticStateAnnotation`                                                                           |
+| `src/research.ts`               | add `researchAgentic(topic, options, hooks, deps)` mirroring `research()`                              |
+| `src/configuration.ts`          | add `agentLlm` (optional, env `AGENT_LLM`), `maxAgentSteps` (default 20, min 1, env `MAX_AGENT_STEPS`) |
+| `src/preflight.ts`              | add agent-model tool-calling check                                                                     |
+| `src/cli-args.ts`, `src/cli.ts` | add `agent` subcommand                                                                                 |
+| `src/mcp.ts`                    | add `deep_research_agent` tool                                                                         |
+| `src/index.ts`                  | export `researchAgentic` and new types                                                                 |
+| `langgraph.json`                | add `"local_deep_researcher_agent": "./src/agent.ts:agenticGraph"`                                     |
+| `package.json`                  | add `langchain@^1`                                                                                     |
 
 ### Tools
 
@@ -120,7 +120,7 @@ surface at runtime with the same hint attached.
 ## Interfaces
 
 - CLI: `local-deep-researcher agent "<topic>" [shared options] --max-steps <n>
-  --agent-model <name>`. Shared options (`--search-api`, `--blocklist`, `-o`,
+--agent-model <name>`. Shared options (`--search-api`, `--blocklist`, `-o`,
   `--json`, `-q`, ...) behave identically. Help text extended.
 - MCP: tool `deep_research_agent` (title "Agentic deep web research"; description
   highlights the autonomous loop and the tool-calling model requirement). Inputs:

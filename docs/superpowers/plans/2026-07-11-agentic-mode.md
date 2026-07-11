@@ -26,10 +26,12 @@
 ### Task 1: Configuration - `agentLlm` and `maxAgentSteps`
 
 **Files:**
+
 - Modify: `src/configuration.ts`
 - Test: `tests/configuration.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `ConfigurationSchema`, `ENV_KEYS`.
 - Produces: `Configuration.agentLlm?: string` (env `AGENT_LLM`), `Configuration.maxAgentSteps: number` (env `MAX_AGENT_STEPS`, default 20, int, min 1). Later tasks read `cfg.agentLlm ?? cfg.localLlm` and `cfg.maxAgentSteps`.
 
@@ -110,10 +112,12 @@ git commit -m "feat: add agentLlm and maxAgentSteps configuration"
 ### Task 2: Prompts - `agentInstructions` and `reportWriterInstructions`
 
 **Files:**
+
 - Modify: `src/prompts.ts`
 - Test: `tests/prompts.test.ts`
 
 **Interfaces:**
+
 - Consumes: existing `getCurrentDate()` export in `src/prompts.ts`.
 - Produces:
   - `agentInstructions(params: { researchTopic: string; currentDate: string; maxAgentSteps: number }): string`
@@ -207,15 +211,21 @@ git commit -m "feat: add agent loop and report writer prompts"
 ### Task 3: Agent tools (`web_search`, `fetch_page`, `take_note`)
 
 **Files:**
+
 - Create: `src/agent-tools.ts`
 - Test: `tests/agent-tools.test.ts`
 
 **Interfaces:**
+
 - Consumes: `searchWithRetry` (`src/search/index.ts`), `applyHeuristics`, `parseBlocklist` (`src/grade.ts`), `fetchRawContent(url, timeoutMs?)` (`src/search/fetch.ts`), `Configuration`, `SearchProvider`, `SearchResult`.
 - Produces (used by Task 5 and later):
 
 ```ts
-export interface AgentNote { note: string; sourceUrl: string; sourceTitle?: string }
+export interface AgentNote {
+  note: string;
+  sourceUrl: string;
+  sourceTitle?: string;
+}
 export type AgentToolPhase = "searching" | "fetching" | "noting";
 export interface AgentToolsContext {
   cfg: Configuration;
@@ -272,7 +282,9 @@ describe("web_search tool", () => {
   });
 
   it("dedups already-seen urls and reports no new results", async () => {
-    const ctx = makeCtx({ seenUrls: new Set(["https://good.example/a", "https://spam.example/x"]) });
+    const ctx = makeCtx({
+      seenUrls: new Set(["https://good.example/a", "https://spam.example/x"]),
+    });
     const out = (await getTool(ctx, "web_search").invoke({ query: "test" })) as string;
     expect(out).toContain("No new relevant results");
   });
@@ -290,7 +302,9 @@ describe("fetch_page tool", () => {
     const ctx = makeCtx({ fetchPage: vi.fn(async () => "x".repeat(20_000)) });
     const events: string[] = [];
     ctx.onToolEvent = (phase) => events.push(phase);
-    const out = (await getTool(ctx, "fetch_page").invoke({ url: "https://good.example/a" })) as string;
+    const out = (await getTool(ctx, "fetch_page").invoke({
+      url: "https://good.example/a",
+    })) as string;
     expect(out.length).toBeLessThanOrEqual(8000);
     expect(events).toEqual(["fetching"]);
   });
@@ -312,7 +326,9 @@ describe("take_note tool", () => {
       source_url: "https://good.example/a",
       source_title: "Good",
     })) as string;
-    expect(ctx.notes).toEqual([{ note: "Finding A", sourceUrl: "https://good.example/a", sourceTitle: "Good" }]);
+    expect(ctx.notes).toEqual([
+      { note: "Finding A", sourceUrl: "https://good.example/a", sourceTitle: "Good" },
+    ]);
     expect(out).toContain("1");
     expect(events).toEqual(["noting"]);
   });
@@ -474,10 +490,12 @@ git commit -m "feat: add agent tools (web_search, fetch_page, take_note)"
 ### Task 4: Preflight - agent model tool-calling capability check
 
 **Files:**
+
 - Modify: `src/preflight.ts`
 - Test: `tests/preflight.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Configuration` (incl. `agentLlm` from Task 1), existing `PreflightError`.
 - Produces: `preflightAgentModel(cfg: Configuration, fetchFn?: typeof fetch): Promise<void>` - throws `PreflightError` when the agent model does not declare the Ollama `tools` capability; fails open when capabilities are not reported (older Ollama); no-op for `openai_compatible`.
 
@@ -488,8 +506,8 @@ describe("preflightAgentModel", () => {
   const cfg = ensureConfiguration({ configurable: { agentLlm: "qwen3" } });
 
   function showResponse(body: unknown, ok = true): typeof fetch {
-    return vi.fn(async () =>
-      ({ ok, status: ok ? 200 : 500, json: async () => body }) as Response,
+    return vi.fn(
+      async () => ({ ok, status: ok ? 200 : 500, json: async () => body }) as Response,
     ) as unknown as typeof fetch;
   }
 
@@ -592,11 +610,13 @@ git commit -m "feat: preflight tool-calling capability check for agent model"
 ### Task 5: Agentic graph (`agentLoop` + `finalizeReport`)
 
 **Files:**
+
 - Modify: `package.json` (add dependency), `src/state.ts`
 - Create: `src/agent.ts`
 - Test: `tests/agent-graph.test.ts`
 
 **Interfaces:**
+
 - Consumes: `createAgentTools`, `AgentNote`, `AgentToolPhase`, `AgentToolsContext` (Task 3); `agentInstructions`, `reportWriterInstructions`, `getCurrentDate` (Task 2); `cfg.agentLlm`, `cfg.maxAgentSteps` (Task 1); `GraphDeps`, `getLlm`, `contentToString`, `stripThinkingTokens`, `getSearchProvider`.
 - Produces:
 
@@ -606,7 +626,9 @@ export const AgenticStateAnnotation; // researchTopic, notes (concat reducer), s
 export type AgenticState = typeof AgenticStateAnnotation.State;
 // src/agent.ts
 export class AgentResearchError extends Error {}
-export interface AgenticGraphDeps extends GraphDeps { onToolEvent?: (phase: AgentToolPhase) => void }
+export interface AgenticGraphDeps extends GraphDeps {
+  onToolEvent?: (phase: AgentToolPhase) => void;
+}
 export function buildAgenticGraph(overrides?: Partial<AgenticGraphDeps>); // compiled graph
 export const agenticGraph; // default compiled graph for Studio
 ```
@@ -813,17 +835,13 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
         currentDate: prompts.getCurrentDate(),
         maxAgentSteps: cfg.maxAgentSteps,
       }),
-      middleware: [
-        modelCallLimitMiddleware({ runLimit: cfg.maxAgentSteps, exitBehavior: "end" }),
-      ],
+      middleware: [modelCallLimitMiddleware({ runLimit: cfg.maxAgentSteps, exitBehavior: "end" })],
     });
     const result = await agent.invoke(
       { messages: [new HumanMessage(`Research this topic: ${state.researchTopic}`)] },
       { recursionLimit: cfg.maxAgentSteps * 2 + 10 },
     );
-    const stepsUsed = (result.messages as BaseMessage[]).filter(
-      (m) => m.getType() === "ai",
-    ).length;
+    const stepsUsed = (result.messages as BaseMessage[]).filter((m) => m.getType() === "ai").length;
     if (stepsUsed >= cfg.maxAgentSteps) {
       deps.warn(
         `agentLoop: reached maxAgentSteps=${cfg.maxAgentSteps}, finalizing with ${ctx.notes.length} notes`,
@@ -896,10 +914,12 @@ git commit -m "feat: agentic graph with createAgent tool loop and one-shot repor
 ### Task 6: `researchAgentic()` + progress extension + library exports
 
 **Files:**
+
 - Modify: `src/research.ts`, `src/index.ts`
 - Test: `tests/research.test.ts`
 
 **Interfaces:**
+
 - Consumes: `buildAgenticGraph`, `AgenticGraphDeps`, `AgentResearchError` (Task 5); `AgentNote`, `AgentToolPhase` (Task 3).
 - Produces:
   - `ResearchPhase` extended with `"fetching" | "noting"`.
@@ -923,7 +943,11 @@ describe("researchAgentic", () => {
           {
             id: "c2",
             name: "take_note",
-            args: { note: "Alpha does X", source_url: "https://alpha.example/1", source_title: "Alpha" },
+            args: {
+              note: "Alpha does X",
+              source_url: "https://alpha.example/1",
+              source_title: "Alpha",
+            },
           },
         ],
       }),
@@ -1087,10 +1111,12 @@ git commit -m "feat: researchAgentic library entry point with step progress"
 ### Task 7: CLI subcommand `agent`
 
 **Files:**
+
 - Modify: `src/cli-args.ts`, `src/cli.ts`
 - Test: `tests/cli-args.test.ts`
 
 **Interfaces:**
+
 - Consumes: `researchAgentic` (Task 6), `preflightAgentModel` (Task 4).
 - Produces: `CliCommand` union gains `{ kind: "agent"; options: CliOptions }`; new flags `--max-steps <n>` -> `configurable.maxAgentSteps`, `--agent-model <name>` -> `configurable.agentLlm`.
 
@@ -1099,7 +1125,14 @@ git commit -m "feat: researchAgentic library entry point with step progress"
 ```ts
 describe("agent subcommand", () => {
   it("parses agent with topic and agent flags", () => {
-    const cmd = parseCliArgs(["agent", "quantum computing", "--max-steps", "10", "--agent-model", "qwen3"]);
+    const cmd = parseCliArgs([
+      "agent",
+      "quantum computing",
+      "--max-steps",
+      "10",
+      "--agent-model",
+      "qwen3",
+    ]);
     expect(cmd.kind).toBe("agent");
     if (cmd.kind !== "agent") return;
     expect(cmd.options.topic).toBe("quantum computing");
@@ -1138,19 +1171,18 @@ Expected: FAIL (agent argv[0] is treated as the topic today).
 2. In `parseCliArgs`, before the existing `parseArgs` call:
 
 ```ts
-  const isAgent = argv[0] === "agent";
-  const args = isAgent ? argv.slice(1) : argv;
+const isAgent = argv[0] === "agent";
+const args = isAgent ? argv.slice(1) : argv;
 ```
 
-   Use `args` in `parseArgs`, add options `"max-steps": { type: "string" }` and `"agent-model": { type: "string" }`, map them into `configurable` next to the existing mappings:
+Use `args` in `parseArgs`, add options `"max-steps": { type: "string" }` and `"agent-model": { type: "string" }`, map them into `configurable` next to the existing mappings:
 
 ```ts
-  if (values["max-steps"] !== undefined) configurable.maxAgentSteps = Number(values["max-steps"]);
-  if (values["agent-model"] !== undefined) configurable.agentLlm = values["agent-model"];
+if (values["max-steps"] !== undefined) configurable.maxAgentSteps = Number(values["max-steps"]);
+if (values["agent-model"] !== undefined) configurable.agentLlm = values["agent-model"];
 ```
 
-   Return `{ kind: isAgent ? "agent" : "research", options }` (keep the existing empty-topic `ConfigurationError`).
-3. Extend `HELP` usage block:
+Return `{ kind: isAgent ? "agent" : "research", options }` (keep the existing empty-topic `ConfigurationError`). 3. Extend `HELP` usage block:
 
 ```
   local-deep-researcher "<topic>" [options]         Fixed research workflow
@@ -1158,7 +1190,7 @@ Expected: FAIL (agent argv[0] is treated as the topic today).
   local-deep-researcher mcp                         Start the MCP stdio server
 ```
 
-   and add to the options list:
+and add to the options list:
 
 ```
   --max-steps <n>        Agent mode: max model calls in the loop (default 20)
@@ -1189,7 +1221,7 @@ Expected: FAIL (agent argv[0] is treated as the topic today).
     });
 ```
 
-   (imports: `preflightAgentModel` from `./preflight`, `researchAgentic` from `./research`; the output/error handling below stays unchanged).
+(imports: `preflightAgentModel` from `./preflight`, `researchAgentic` from `./research`; the output/error handling below stays unchanged).
 
 - [ ] **Step 4: Run tests, verify pass**
 
@@ -1210,10 +1242,12 @@ git commit -m "feat: agent CLI subcommand with --max-steps and --agent-model"
 ### Task 8: MCP tool `deep_research_agent`
 
 **Files:**
+
 - Modify: `src/mcp.ts`
 - Test: `tests/mcp.test.ts`
 
 **Interfaces:**
+
 - Consumes: `researchAgentic` (Task 6), `preflightAgentModel` (Task 4), existing `runMcpServer` DI pattern (it takes an injectable research function; follow the same injection style for `researchAgentic`).
 - Produces: MCP tool `deep_research_agent` with inputs `topic` (required), `max_steps`, `agent_llm`, `search_api`, `source_domain_blocklist`; progress notifications use `progress = step`, `total = maxAgentSteps`.
 
@@ -1271,71 +1305,71 @@ Expected: new tests FAIL (tool not registered).
 - [ ] **Step 3: Implement** - in `src/mcp.ts`, extend `runMcpServer`'s injectable signature with a `researchAgenticFn` parameter (defaulting to `researchAgentic`), then register alongside `deep_research`:
 
 ```ts
-  server.registerTool(
-    "deep_research_agent",
-    {
-      title: "Agentic deep web research",
-      description:
-        "Run agentic web research: an autonomous LLM agent decides its own searches, page fetches and notes in a tool-calling loop, then a report is written from the notes. Requires a local model with tool calling (e.g. qwen3). Uses a local LLM; may take several minutes.",
-      inputSchema: {
-        topic: z.string().describe("The research topic or question"),
-        max_steps: z
-          .number()
-          .int()
-          .min(1)
-          .optional()
-          .describe("Max model calls in the agent loop (default 20)"),
-        agent_llm: z
-          .string()
-          .optional()
-          .describe("Tool-calling model for the agent loop (default: the configured local LLM)"),
-        search_api: z.enum(["duckduckgo", "tavily", "perplexity", "searxng"]).optional(),
-        source_domain_blocklist: z
-          .string()
-          .optional()
-          .describe("Comma-separated domains to always reject"),
-      },
+server.registerTool(
+  "deep_research_agent",
+  {
+    title: "Agentic deep web research",
+    description:
+      "Run agentic web research: an autonomous LLM agent decides its own searches, page fetches and notes in a tool-calling loop, then a report is written from the notes. Requires a local model with tool calling (e.g. qwen3). Uses a local LLM; may take several minutes.",
+    inputSchema: {
+      topic: z.string().describe("The research topic or question"),
+      max_steps: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Max model calls in the agent loop (default 20)"),
+      agent_llm: z
+        .string()
+        .optional()
+        .describe("Tool-calling model for the agent loop (default: the configured local LLM)"),
+      search_api: z.enum(["duckduckgo", "tavily", "perplexity", "searxng"]).optional(),
+      source_domain_blocklist: z
+        .string()
+        .optional()
+        .describe("Comma-separated domains to always reject"),
     },
-    async ({ topic, max_steps, agent_llm, search_api, source_domain_blocklist }, extra) => {
-      const configurable: Record<string, unknown> = {};
-      if (max_steps !== undefined) configurable.maxAgentSteps = max_steps;
-      if (agent_llm !== undefined) configurable.agentLlm = agent_llm;
-      if (search_api !== undefined) configurable.searchApi = search_api;
-      if (source_domain_blocklist !== undefined)
-        configurable.sourceDomainBlocklist = source_domain_blocklist;
-      try {
-        const cfg = ensureConfiguration({ configurable });
-        validateConfiguration(cfg);
-        await preflight(cfg);
-        await preflightAgentModel(cfg);
-        const progressToken = extra._meta?.progressToken;
-        const report = await researchAgenticFn(topic, configurable, {
-          onProgress: (event) => {
-            if (progressToken === undefined) return;
-            extra
-              .sendNotification({
-                method: "notifications/progress",
-                params: {
-                  progressToken,
-                  progress: event.step ?? event.loop,
-                  total: cfg.maxAgentSteps,
-                  message: event.phase,
-                },
-              })
-              .catch(() => {
-                // client may have disconnected; progress is best-effort
-              });
-          },
-        });
-        return { content: [{ type: "text", text: report.markdown }] };
-      } catch (error) {
-        return {
-          isError: true,
-          content: [{ type: "text", text: `Error: ${(error as Error).message}` }],
-        };
-      }
-    },
-  );
+  },
+  async ({ topic, max_steps, agent_llm, search_api, source_domain_blocklist }, extra) => {
+    const configurable: Record<string, unknown> = {};
+    if (max_steps !== undefined) configurable.maxAgentSteps = max_steps;
+    if (agent_llm !== undefined) configurable.agentLlm = agent_llm;
+    if (search_api !== undefined) configurable.searchApi = search_api;
+    if (source_domain_blocklist !== undefined)
+      configurable.sourceDomainBlocklist = source_domain_blocklist;
+    try {
+      const cfg = ensureConfiguration({ configurable });
+      validateConfiguration(cfg);
+      await preflight(cfg);
+      await preflightAgentModel(cfg);
+      const progressToken = extra._meta?.progressToken;
+      const report = await researchAgenticFn(topic, configurable, {
+        onProgress: (event) => {
+          if (progressToken === undefined) return;
+          extra
+            .sendNotification({
+              method: "notifications/progress",
+              params: {
+                progressToken,
+                progress: event.step ?? event.loop,
+                total: cfg.maxAgentSteps,
+                message: event.phase,
+              },
+            })
+            .catch(() => {
+              // client may have disconnected; progress is best-effort
+            });
+        },
+      });
+      return { content: [{ type: "text", text: report.markdown }] };
+    } catch (error) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: `Error: ${(error as Error).message}` }],
+      };
+    }
+  },
+);
 ```
 
 (Match the surrounding file's exact error-handling and return shape used by `deep_research`; import `preflightAgentModel` and `researchAgentic`.)
@@ -1359,10 +1393,12 @@ git commit -m "feat: deep_research_agent MCP tool"
 ### Task 9: Studio graph, docs, changelog, version 0.6.0
 
 **Files:**
+
 - Modify: `langgraph.json`, `README.md`, `CHANGELOG.md`, `package.json`
 - Test: `tests/smoke.test.ts` (only if it asserts exports; otherwise no new tests - docs task)
 
 **Interfaces:**
+
 - Consumes: `agenticGraph` export (Task 5), everything shipped in Tasks 1-8.
 - Produces: released-ready 0.6.0 tree; user performs the actual release (tag/push/publish) himself.
 
