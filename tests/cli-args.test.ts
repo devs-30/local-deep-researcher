@@ -63,4 +63,25 @@ describe("parseCliArgs", () => {
     expect(() => parseCliArgs([])).toThrow(ConfigurationError);
     expect(() => parseCliArgs(["--json"])).toThrow(ConfigurationError);
   });
+
+  it("maps --no-grade-sources and --blocklist into configurable", () => {
+    const cmd = parseCliArgs([
+      "topic",
+      "--no-grade-sources",
+      "--blocklist",
+      "spam.example,junk.example",
+    ]);
+    expect(cmd.kind).toBe("research");
+    if (cmd.kind !== "research") return;
+    expect(cmd.options.configurable.gradeSources).toBe(false);
+    expect(cmd.options.configurable.sourceDomainBlocklist).toBe("spam.example,junk.example");
+  });
+
+  it("omits grading keys when the flags are absent", () => {
+    const cmd = parseCliArgs(["topic"]);
+    expect(cmd.kind).toBe("research");
+    if (cmd.kind !== "research") return;
+    expect("gradeSources" in cmd.options.configurable).toBe(false);
+    expect("sourceDomainBlocklist" in cmd.options.configurable).toBe(false);
+  });
 });
