@@ -26,6 +26,8 @@ export const ConfigurationSchema = z.object({
   tavilyApiKey: z.string().optional(),
   perplexityApiKey: z.string().optional(),
   searxngUrl: z.string().optional(),
+  gradeSources: boolFromString.default(true),
+  sourceDomainBlocklist: z.string().default(""),
 });
 
 export type Configuration = z.infer<typeof ConfigurationSchema>;
@@ -43,6 +45,8 @@ const ENV_KEYS: Record<keyof Configuration, string> = {
   tavilyApiKey: "TAVILY_API_KEY",
   perplexityApiKey: "PERPLEXITY_API_KEY",
   searxngUrl: "SEARXNG_URL",
+  gradeSources: "GRADE_SOURCES",
+  sourceDomainBlocklist: "SOURCE_DOMAIN_BLOCKLIST",
 };
 
 /**

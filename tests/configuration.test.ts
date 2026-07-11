@@ -18,6 +18,8 @@ const MANAGED_ENV = [
   "TAVILY_API_KEY",
   "PERPLEXITY_API_KEY",
   "SEARXNG_URL",
+  "GRADE_SOURCES",
+  "SOURCE_DOMAIN_BLOCKLIST",
 ];
 
 let savedEnv: Record<string, string | undefined>;
@@ -76,6 +78,35 @@ describe("ensureConfiguration", () => {
     expect(() => ensureConfiguration({ configurable: { searchApi: "bing" } })).toThrow(
       ConfigurationError,
     );
+  });
+
+  it("defaults gradeSources to true and sourceDomainBlocklist to empty", () => {
+    const cfg = ensureConfiguration();
+    expect(cfg.gradeSources).toBe(true);
+    expect(cfg.sourceDomainBlocklist).toBe("");
+  });
+
+  it("reads GRADE_SOURCES and SOURCE_DOMAIN_BLOCKLIST from env", () => {
+    process.env.GRADE_SOURCES = "false";
+    process.env.SOURCE_DOMAIN_BLOCKLIST = "spam.example, junk.example";
+    try {
+      const cfg = ensureConfiguration();
+      expect(cfg.gradeSources).toBe(false);
+      expect(cfg.sourceDomainBlocklist).toBe("spam.example, junk.example");
+    } finally {
+      delete process.env.GRADE_SOURCES;
+      delete process.env.SOURCE_DOMAIN_BLOCKLIST;
+    }
+  });
+
+  it("lets configurable override GRADE_SOURCES env", () => {
+    process.env.GRADE_SOURCES = "false";
+    try {
+      const cfg = ensureConfiguration({ configurable: { gradeSources: true } });
+      expect(cfg.gradeSources).toBe(true);
+    } finally {
+      delete process.env.GRADE_SOURCES;
+    }
   });
 });
 
