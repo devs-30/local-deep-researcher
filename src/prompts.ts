@@ -177,7 +177,13 @@ Rules:
 3. Use fetch_page only when an excerpt looks promising but is too shallow.
 4. Prefer several precise searches over one broad one. Avoid repeating similar queries.
 5. You have a budget of at most ${params.maxAgentSteps} thinking steps. Plan accordingly.
-6. When your notes cover the topic (aim for 5-10 solid notes), respond with a short
+6. Match the breadth the user asked for. For a focused question, 5-10 solid notes are
+   usually enough. But when the user asks to enumerate items or wants as many as
+   possible (an exhaustive list), assume more exist than any single source shows:
+   keep searching from different angles (other keywords, sites, phrasings) and use
+   the whole step budget if needed - stop early only when consecutive searches
+   surface nothing new.
+7. When your notes cover the topic at the requested breadth, respond with a short
    plain-text confirmation and STOP calling tools. Do not write the report yourself.`;
 
 export const reportWriterInstructions = `Write a well-structured research report in markdown based ONLY on the provided notes.

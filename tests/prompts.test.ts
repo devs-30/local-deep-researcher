@@ -98,6 +98,17 @@ describe("agentInstructions", () => {
     expect(text).toContain("fetch_page");
     expect(text).toContain("take_note");
   });
+
+  it("scales research breadth to the user's intent instead of a fixed note count", () => {
+    const text = prompts.agentInstructions({
+      researchTopic: "list all X",
+      currentDate: "January 1, 2026",
+      maxAgentSteps: 12,
+    });
+    expect(text).toContain("exhaustive");
+    expect(text).toMatch(/nothing new/i);
+    expect(text).toMatch(/whole step budget/i);
+  });
 });
 
 describe("reportWriterInstructions", () => {
