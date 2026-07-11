@@ -126,12 +126,15 @@ export function createAgentTools(ctx: AgentToolsContext): StructuredToolInterfac
         }
         return "No new relevant results. Try a different query.";
       }
-      return kept
+      // In-context nudge: system-prompt rules fade for small models, but a hint
+      // attached to the result they are looking at right now gets followed.
+      const results_ = kept
         .map(
           (r) =>
             `Title: ${r.title}\nURL: ${r.url}\nContent: ${(r.rawContent?.trim() || r.content).slice(0, MAX_EXCERPT_CHARS)}`,
         )
         .join("\n\n---\n\n");
+      return `${results_}\n\n(Note: excerpts are truncated. Call fetch_page(url) to read a page in full - always do this for catalog, list or customer-stories pages before noting.)`;
     },
     {
       name: "web_search",
