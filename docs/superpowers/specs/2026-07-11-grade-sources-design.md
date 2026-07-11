@@ -117,8 +117,8 @@ filtering, default ON). README: document the node and how to disable it.
   empty blocklist cuts nothing.
 - **Node/graph**: via existing `buildGraph({ getLlm, getSearchProvider })` injection —
   fake LLM returning scripted verdicts: keep/drop path, all-rejected path (empty round
-  - warn), `gradeSources=false` (zero grader calls, output identical to current),
-    fail-open on malformed JSON and on LLM exceptions.
+  plus warn), `gradeSources=false` (zero grader calls, output identical to current),
+  fail-open on malformed JSON and on LLM exceptions.
 - **Bibliography**: a rejected source never appears in the final "Sources" section.
 
 ## Research references
