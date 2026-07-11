@@ -58,8 +58,13 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
       { messages: [new HumanMessage(`Research this topic: ${state.researchTopic}`)] },
       { recursionLimit: cfg.maxAgentSteps * 2 + 10 },
     );
-    const stepsUsed = (result.messages as BaseMessage[]).filter((m) => m.getType() === "ai").length;
-    if (stepsUsed >= cfg.maxAgentSteps) {
+    // The middleware injects one extra "ai"-typed stop-notice message when it cuts
+    // the run off, so aiCount > maxAgentSteps is the only reliable signal that the
+    // run was capped rather than finished naturally on the budget-th call.
+    const aiCount = (result.messages as BaseMessage[]).filter((m) => m.getType() === "ai").length;
+    const capped = aiCount > cfg.maxAgentSteps;
+    const stepsUsed = Math.min(aiCount, cfg.maxAgentSteps);
+    if (capped) {
       deps.warn(
         `agentLoop: reached maxAgentSteps=${cfg.maxAgentSteps}, finalizing with ${ctx.notes.length} notes`,
       );

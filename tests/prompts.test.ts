@@ -103,6 +103,6 @@ describe("agentInstructions", () => {
 describe("reportWriterInstructions", () => {
   it("asks for a report without a sources section", () => {
     expect(prompts.reportWriterInstructions).toContain("report");
-    expect(prompts.reportWriterInstructions.toLowerCase()).toContain("do not");
+    expect(prompts.reportWriterInstructions).toMatch(/do not include a sources/i);
   });
 });

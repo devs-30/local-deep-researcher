@@ -62,7 +62,8 @@ describe("agentic graph", () => {
       noteCall("c3", "Alpha also does Y", "https://alpha.example/1", "Alpha"),
       new AIMessage("Done researching."),
     ]);
-    const graph = buildAgenticGraph(deps(model));
+    const d = deps(model);
+    const graph = buildAgenticGraph(d);
     const result = await graph.invoke({ researchTopic: "alpha systems" }, CONFIG);
     expect(result.notes).toHaveLength(2);
     expect(result.runningSummary).toContain("## Summary");
@@ -71,6 +72,8 @@ describe("agentic graph", () => {
     // Sources are deduplicated by URL.
     expect(result.runningSummary.match(/alpha\.example/g)).toHaveLength(1);
     expect(result.reportBody).toBe("Report body.");
+    // Finished naturally, well under the (default) step budget - no cap warning.
+    expect(d.warn).not.toHaveBeenCalledWith(expect.stringContaining("maxAgentSteps"));
   });
 
   it("stops at maxAgentSteps and still finalizes with gathered notes", async () => {
@@ -88,9 +91,10 @@ describe("agentic graph", () => {
       { configurable: { ...CONFIG.configurable, maxAgentSteps: 3 } },
     );
     // modelCallLimitMiddleware (exitBehavior: "end") injects one extra AIMessage
-    // carrying its stop notice when the run limit is hit, so stepsUsed (a count of
-    // "ai"-typed messages) is runLimit + 1 in the capped case, not runLimit.
-    expect(result.stepsUsed).toBeLessThanOrEqual(4);
+    // carrying its stop notice when the run limit is hit. stepsUsed is clamped to
+    // maxAgentSteps so it always reflects the configured budget, not the raw
+    // "ai"-typed message count (which is runLimit + 1 in the capped case).
+    expect(result.stepsUsed).toBeLessThanOrEqual(3);
     expect(result.runningSummary).toContain("## Summary");
     expect(d.warn).toHaveBeenCalledWith(expect.stringContaining("maxAgentSteps"));
   });

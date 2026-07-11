@@ -129,7 +129,7 @@ export async function researchAgentic(
   const graph = buildAgenticGraph({
     ...deps,
     onToolEvent: (phase) => {
-      if (phase === "searching") step += 1;
+      step += 1;
       emit(phase);
       deps.onToolEvent?.(phase);
     },

@@ -153,12 +153,15 @@ section is built deterministically from the notes' source URLs.
 
 Agentic mode requires an Ollama model with tool calling (e.g. `qwen3`) - the default `gemma4:e4b`
 does not support tools. A preflight check fails fast with a hint to set `--agent-model` /
-`AGENT_LLM` if the configured model can't call tools.
+`AGENT_LLM` if the configured model can't call tools. In agentic mode the model itself chooses
+which URLs to fetch; fetching localhost and private-network addresses is blocked.
 
 ```bash
 ollama pull qwen3
 npx @devs30/local-deep-researcher agent "history of liquid rocket engines" --agent-model qwen3 --max-steps 15
 ```
+
+### CLI flags
 
 | Flag                   | Description                                                                 |
 | ---------------------- | --------------------------------------------------------------------------- |

@@ -154,6 +154,7 @@ describe("researchAgentic", () => {
     expect(report.sources).toEqual([{ title: "Alpha", url: "https://alpha.example/1" }]);
     expect(events.map((e) => e.phase)).toEqual(["searching", "noting", "finalizing"]);
     expect(events[0].step).toBe(1);
+    expect(events[1].step).toBe(2);
   });
 
   it("rejects an empty topic", async () => {

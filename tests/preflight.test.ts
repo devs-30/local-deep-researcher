@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { ensureConfiguration } from "../src/configuration";
-import { PreflightError, preflightOllama, preflightAgentModel } from "../src/preflight";
+import { PreflightError, preflightAgentModel, preflightOllama } from "../src/preflight";
 
 const cfg = (over: Record<string, unknown> = {}) =>
   ensureConfiguration({ configurable: { llmProvider: "ollama", localLlm: "llama3.2", ...over } });
@@ -39,7 +39,7 @@ describe("preflightOllama", () => {
 });
 
 describe("preflightAgentModel", () => {
-  const cfg = ensureConfiguration({ configurable: { agentLlm: "qwen3" } });
+  const agentCfg = ensureConfiguration({ configurable: { agentLlm: "qwen3" } });
 
   function showResponse(body: unknown, ok = true): typeof fetch {
     return vi.fn(
@@ -49,22 +49,22 @@ describe("preflightAgentModel", () => {
 
   it("passes when the model declares the tools capability", async () => {
     await expect(
-      preflightAgentModel(cfg, showResponse({ capabilities: ["completion", "tools"] })),
+      preflightAgentModel(agentCfg, showResponse({ capabilities: ["completion", "tools"] })),
     ).resolves.toBeUndefined();
   });
 
   it("throws when the model lacks the tools capability", async () => {
     await expect(
-      preflightAgentModel(cfg, showResponse({ capabilities: ["completion"] })),
+      preflightAgentModel(agentCfg, showResponse({ capabilities: ["completion"] })),
     ).rejects.toThrow(/does not support tool calling/);
   });
 
   it("fails open when capabilities are not reported", async () => {
-    await expect(preflightAgentModel(cfg, showResponse({}))).resolves.toBeUndefined();
+    await expect(preflightAgentModel(agentCfg, showResponse({}))).resolves.toBeUndefined();
   });
 
   it("throws a reachability error when /api/show fails", async () => {
-    await expect(preflightAgentModel(cfg, showResponse({}, false))).rejects.toThrow(
+    await expect(preflightAgentModel(agentCfg, showResponse({}, false))).rejects.toThrow(
       /Cannot inspect model/,
     );
   });
