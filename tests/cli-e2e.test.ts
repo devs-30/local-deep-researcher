@@ -32,6 +32,20 @@ describe.skipIf(!existsSync(CLI))("cli e2e (built dist/bin.js)", () => {
     ).rejects.toMatchObject({ code: 1 });
   });
 
+  it("prints the search engine banner before starting agent research", async () => {
+    // Unreachable Ollama makes preflight exit 1 fast, but the banner must
+    // already be on stderr - it is printed before any network call.
+    const err = (await run("node", [CLI, "agent", "some topic", "--agent-model", "qwen3"], {
+      env: { ...process.env, OLLAMA_BASE_URL: "http://127.0.0.1:9" },
+    }).catch((e: Error & { code: number; stderr: string }) => e)) as Error & {
+      code: number;
+      stderr: string;
+    };
+    expect(err.code).toBe(1);
+    expect(err.stderr).toContain("search: duckduckgo");
+    expect(err.stderr).toContain("model: qwen3");
+  });
+
   it("works when invoked through a symlink (npm bin scenario)", async () => {
     const dir = await fs.mkdtemp(join(tmpdir(), "ldr-bin-"));
     const link = join(dir, "local-deep-researcher");

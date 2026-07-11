@@ -42,6 +42,11 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   try {
     const cfg = ensureConfiguration({ configurable: options.configurable });
     validateConfiguration(cfg);
+    if (command.kind === "agent" && !options.quiet) {
+      console.error(
+        `[agent] search: ${cfg.searchApi} | model: ${cfg.agentLlm ?? cfg.localLlm} | budget: ${cfg.maxAgentSteps} steps`,
+      );
+    }
     await preflightOllama(cfg);
     if (command.kind === "agent") await preflightAgentModel(cfg);
     started = true;

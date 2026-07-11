@@ -59,7 +59,7 @@ export function buildAgenticGraph(overrides: Partial<AgenticGraphDeps> = {}) {
       // Termination is owned by modelCallLimitMiddleware; the recursion limit is
       // only a runaway backstop. Each loop iteration costs ~3 super-steps (model +
       // tools + middleware hooks), so leave generous headroom above that.
-      { recursionLimit: cfg.maxAgentSteps * 5 + 20 },
+      { recursionLimit: cfg.maxAgentSteps * 10 + 50 },
     );
     // The middleware injects one extra "ai"-typed stop-notice message when it cuts
     // the run off, so aiCount > maxAgentSteps is the only reliable signal that the
