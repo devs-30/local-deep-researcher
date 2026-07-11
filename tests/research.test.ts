@@ -1,8 +1,29 @@
 import { describe, expect, it } from "vitest";
+import { BaseChatModel } from "@langchain/core/language_models/chat_models";
+import { AIMessage, type BaseMessage } from "@langchain/core/messages";
+import type { ChatResult } from "@langchain/core/outputs";
 import { FakeListChatModel } from "@langchain/core/utils/testing";
 import { ConfigurationError } from "../src/configuration";
-import { research, type ProgressEvent } from "../src/research";
+import { research, researchAgentic, type ProgressEvent } from "../src/research";
 import type { SearchProvider } from "../src/search/types";
+
+class FakeToolCallingModel extends BaseChatModel {
+  private queue: AIMessage[];
+  constructor(queue: AIMessage[]) {
+    super({});
+    this.queue = [...queue];
+  }
+  _llmType(): string {
+    return "fake-tool-calling";
+  }
+  override bindTools(): this {
+    return this;
+  }
+  async _generate(_messages: BaseMessage[]): Promise<ChatResult> {
+    const message = this.queue.shift() ?? new AIMessage("Research complete.");
+    return { generations: [{ message, text: "" }] };
+  }
+}
 
 const fakeSearch: SearchProvider = async (query) => [
   {
@@ -86,5 +107,56 @@ describe("research", () => {
     // Cap = 2 * (4 + 1) = 10 rounds, all empty: report exists, bibliography is empty.
     expect(report.sources).toHaveLength(0);
     expect(report.markdown).toContain("## Summary");
+  });
+});
+
+describe("researchAgentic", () => {
+  it("returns a ResearchReport with parsed sources and emits step progress", async () => {
+    const model = new FakeToolCallingModel([
+      new AIMessage({
+        content: "",
+        tool_calls: [{ id: "c1", name: "web_search", args: { query: "alpha" } }],
+      }),
+      new AIMessage({
+        content: "",
+        tool_calls: [
+          {
+            id: "c2",
+            name: "take_note",
+            args: {
+              note: "Alpha does X",
+              source_url: "https://alpha.example/1",
+              source_title: "Alpha",
+            },
+          },
+        ],
+      }),
+      new AIMessage("Done."),
+    ]);
+    const writer = new FakeToolCallingModel([new AIMessage("Agentic report body.")]);
+    const events: Array<{ phase: string; step?: number }> = [];
+    const report = await researchAgentic(
+      "alpha systems",
+      { agentLlm: "fake-agent", localLlm: "fake-writer", maxAgentSteps: 5 },
+      { onProgress: (e) => events.push({ phase: e.phase, step: e.step }) },
+      {
+        getLlm: (cfg) => (cfg.localLlm === "fake-agent" ? model : writer),
+        getSearchProvider: () => async () => [
+          { title: "Alpha", url: "https://alpha.example/1", content: "alpha ".repeat(50) },
+        ],
+        retryDelayMs: 0,
+        warn: () => {},
+      },
+    );
+    expect(report.markdown).toContain("## Summary");
+    expect(report.markdown).toContain("Agentic report body.");
+    expect(report.summary).toContain("Agentic report body.");
+    expect(report.sources).toEqual([{ title: "Alpha", url: "https://alpha.example/1" }]);
+    expect(events.map((e) => e.phase)).toEqual(["searching", "noting", "finalizing"]);
+    expect(events[0].step).toBe(1);
+  });
+
+  it("rejects an empty topic", async () => {
+    await expect(researchAgentic("  ")).rejects.toThrow(ConfigurationError);
   });
 });

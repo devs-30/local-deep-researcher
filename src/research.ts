@@ -1,3 +1,5 @@
+import { buildAgenticGraph, type AgenticGraphDeps } from "./agent";
+import type { AgentNote } from "./agent-tools";
 import {
   ConfigurationError,
   ensureConfiguration,
@@ -19,12 +21,22 @@ export interface ResearchReport {
 }
 
 export type ResearchPhase =
-  "generating_query" | "searching" | "grading" | "summarizing" | "reflecting" | "finalizing";
+  | "generating_query"
+  | "searching"
+  | "grading"
+  | "summarizing"
+  | "reflecting"
+  | "finalizing"
+  | "fetching"
+  | "noting";
 
 export interface ProgressEvent {
   phase: ResearchPhase;
   loop: number;
   maxLoops: number;
+  /** Agentic mode only: model-step counter (mirrors loop/maxLoops). */
+  step?: number;
+  maxSteps?: number;
 }
 
 export interface ResearchHooks {
@@ -91,5 +103,67 @@ export async function research(
     }
   }
 
+  return { summary, sources, markdown };
+}
+
+export async function researchAgentic(
+  topic: string,
+  options: Partial<Configuration> = {},
+  hooks: ResearchHooks = {},
+  deps: Partial<AgenticGraphDeps> = {},
+): Promise<ResearchReport> {
+  if (!topic.trim()) throw new ConfigurationError("Research topic must not be empty");
+  const cfg = ensureConfiguration({ configurable: options });
+  validateConfiguration(cfg);
+
+  let step = 0;
+  const emit = (phase: ResearchPhase) =>
+    hooks.onProgress?.({
+      phase,
+      loop: step,
+      maxLoops: cfg.maxAgentSteps,
+      step,
+      maxSteps: cfg.maxAgentSteps,
+    });
+
+  const graph = buildAgenticGraph({
+    ...deps,
+    onToolEvent: (phase) => {
+      if (phase === "searching") step += 1;
+      emit(phase);
+      deps.onToolEvent?.(phase);
+    },
+  });
+
+  const stream = await graph.stream(
+    { researchTopic: topic },
+    {
+      configurable: options,
+      streamMode: "updates",
+      recursionLimit: 10 + cfg.maxAgentSteps * 3,
+    },
+  );
+
+  let markdown = "";
+  let notes: AgentNote[] = [];
+  for await (const chunk of stream) {
+    for (const [node, update] of Object.entries(chunk as Record<string, Record<string, unknown>>)) {
+      if (node === "agentLoop") {
+        notes = (update.notes as AgentNote[] | undefined) ?? [];
+        emit("finalizing");
+      }
+      if (node === "finalizeReport") markdown = String(update.runningSummary ?? markdown);
+    }
+  }
+
+  const seen = new Set<string>();
+  const sources: Source[] = [];
+  for (const n of notes) {
+    if (!seen.has(n.sourceUrl)) {
+      seen.add(n.sourceUrl);
+      sources.push({ title: n.sourceTitle ?? n.sourceUrl, url: n.sourceUrl });
+    }
+  }
+  const summary = markdown.replace(/^## Summary\n/, "").split("\n\n### Sources:")[0] ?? markdown;
   return { summary, sources, markdown };
 }
