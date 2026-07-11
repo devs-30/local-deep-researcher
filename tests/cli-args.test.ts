@@ -84,4 +84,18 @@ describe("parseCliArgs", () => {
     expect("gradeSources" in cmd.options.configurable).toBe(false);
     expect("sourceDomainBlocklist" in cmd.options.configurable).toBe(false);
   });
+
+  it("maps --count-empty-loops into configurable", () => {
+    const cmd = parseCliArgs(["topic", "--count-empty-loops"]);
+    expect(cmd.kind).toBe("research");
+    if (cmd.kind !== "research") return;
+    expect(cmd.options.configurable.countEmptyLoops).toBe(true);
+  });
+
+  it("omits countEmptyLoops when the flag is absent", () => {
+    const cmd = parseCliArgs(["topic"]);
+    expect(cmd.kind).toBe("research");
+    if (cmd.kind !== "research") return;
+    expect("countEmptyLoops" in cmd.options.configurable).toBe(false);
+  });
 });

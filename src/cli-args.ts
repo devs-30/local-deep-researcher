@@ -30,6 +30,7 @@ Options:
   --fetch-full-page      Fetch full page content for each source
   --no-grade-sources     Disable source grading (credibility heuristics + LLM relevance filter)
   --blocklist <domains>  Comma-separated domains to always reject (e.g. spam.example,junk.example)
+  --count-empty-loops    Empty rounds (no sources kept) also consume the loop budget (v0.2.x behavior)
   -o, --output <file>    Write the report to a file instead of stdout
   --json                 Output {"summary", "sources"} JSON instead of markdown
   -q, --quiet            Suppress progress output on stderr
@@ -37,7 +38,7 @@ Options:
   -v, --version          Show version
 
 Environment: TAVILY_API_KEY, PERPLEXITY_API_KEY, SEARXNG_URL, OLLAMA_BASE_URL,
-OPENAI_COMPATIBLE_BASE_URL, OPENAI_COMPATIBLE_API_KEY, GRADE_SOURCES, SOURCE_DOMAIN_BLOCKLIST (also read from .env).`;
+OPENAI_COMPATIBLE_BASE_URL, OPENAI_COMPATIBLE_API_KEY, GRADE_SOURCES, SOURCE_DOMAIN_BLOCKLIST, COUNT_EMPTY_LOOPS (also read from .env).`;
 
 export function parseCliArgs(argv: string[]): CliCommand {
   if (argv[0] === "mcp") return { kind: "mcp" };
@@ -53,6 +54,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
       "fetch-full-page": { type: "boolean" },
       "no-grade-sources": { type: "boolean" },
       blocklist: { type: "string" },
+      "count-empty-loops": { type: "boolean" },
       output: { type: "string", short: "o" },
       json: { type: "boolean", default: false },
       quiet: { type: "boolean", short: "q", default: false },
@@ -77,6 +79,7 @@ export function parseCliArgs(argv: string[]): CliCommand {
     configurable.fetchFullPage = values["fetch-full-page"];
   if (values["no-grade-sources"]) configurable.gradeSources = false;
   if (values.blocklist !== undefined) configurable.sourceDomainBlocklist = values.blocklist;
+  if (values["count-empty-loops"]) configurable.countEmptyLoops = true;
   if (values["base-url"] !== undefined) {
     configurable.ollamaBaseUrl = values["base-url"];
     configurable.openaiCompatibleBaseUrl = values["base-url"];
