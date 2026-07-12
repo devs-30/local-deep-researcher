@@ -108,6 +108,43 @@ describe("research", () => {
     expect(report.sources).toHaveLength(0);
     expect(report.markdown).toContain("## Summary");
   });
+
+  it("mirrors LangSmith options into process.env before running", async () => {
+    const saved = {
+      LANGSMITH_TRACING: process.env.LANGSMITH_TRACING,
+      LANGSMITH_API_KEY: process.env.LANGSMITH_API_KEY,
+      LANGSMITH_PROJECT: process.env.LANGSMITH_PROJECT,
+      LANGSMITH_ENDPOINT: process.env.LANGSMITH_ENDPOINT,
+    };
+    try {
+      await research(
+        "t",
+        {
+          maxWebResearchLoops: 0,
+          langsmithTracing: true,
+          langsmithApiKey: "lsv2_test",
+          langsmithEndpoint: "http://127.0.0.1:1",
+        },
+        {},
+        deps,
+      );
+      expect(process.env.LANGSMITH_TRACING).toBe("true");
+      expect(process.env.LANGSMITH_API_KEY).toBe("lsv2_test");
+      expect(process.env.LANGSMITH_PROJECT).toBe("local-deep-researcher");
+      expect(process.env.LANGSMITH_ENDPOINT).toBe("http://127.0.0.1:1");
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
+  it("rejects langsmithTracing without an API key before running", async () => {
+    await expect(research("t", { langsmithTracing: true }, {}, deps)).rejects.toThrow(
+      /LANGSMITH_API_KEY/,
+    );
+  });
 });
 
 describe("researchAgentic", () => {
@@ -204,5 +241,67 @@ describe("researchAgentic", () => {
     expect(report.summary).toContain("Before text.");
     expect(report.summary).toContain("fake source line");
     expect(report.markdown.trim().endsWith("* Alpha : https://alpha.example/1")).toBe(true);
+  });
+
+  it("mirrors LangSmith options into process.env before running", async () => {
+    const saved = {
+      LANGSMITH_TRACING: process.env.LANGSMITH_TRACING,
+      LANGSMITH_API_KEY: process.env.LANGSMITH_API_KEY,
+      LANGSMITH_PROJECT: process.env.LANGSMITH_PROJECT,
+      LANGSMITH_ENDPOINT: process.env.LANGSMITH_ENDPOINT,
+    };
+    try {
+      const model = new FakeToolCallingModel([
+        new AIMessage({
+          content: "",
+          tool_calls: [
+            {
+              id: "c1",
+              name: "take_note",
+              args: {
+                note: "Alpha does X",
+                source_url: "https://alpha.example/1",
+                source_title: "Alpha",
+              },
+            },
+          ],
+        }),
+        new AIMessage("Done."),
+      ]);
+      const writer = new FakeToolCallingModel([new AIMessage("Report body.")]);
+      await researchAgentic(
+        "t",
+        {
+          agentLlm: "fake-agent",
+          localLlm: "fake-writer",
+          maxAgentSteps: 5,
+          langsmithTracing: true,
+          langsmithApiKey: "lsv2_test",
+          langsmithEndpoint: "http://127.0.0.1:1",
+        },
+        {},
+        {
+          getLlm: (cfg) => (cfg.localLlm === "fake-agent" ? model : writer),
+          getSearchProvider: () => async () => [],
+          retryDelayMs: 0,
+          warn: () => {},
+        },
+      );
+      expect(process.env.LANGSMITH_TRACING).toBe("true");
+      expect(process.env.LANGSMITH_API_KEY).toBe("lsv2_test");
+      expect(process.env.LANGSMITH_PROJECT).toBe("local-deep-researcher");
+      expect(process.env.LANGSMITH_ENDPOINT).toBe("http://127.0.0.1:1");
+    } finally {
+      for (const [key, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
+  it("rejects langsmithTracing without an API key before running", async () => {
+    await expect(researchAgentic("t", { langsmithTracing: true }, {}, {})).rejects.toThrow(
+      /LANGSMITH_API_KEY/,
+    );
   });
 });

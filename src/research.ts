@@ -1,6 +1,7 @@
 import { buildAgenticGraph, type AgenticGraphDeps } from "./agent";
 import type { AgentNote } from "./agent-tools";
 import {
+  applyTracingEnv,
   ConfigurationError,
   ensureConfiguration,
   validateConfiguration,
@@ -61,6 +62,7 @@ export async function research(
   if (!topic.trim()) throw new ConfigurationError("Research topic must not be empty");
   const cfg = ensureConfiguration({ configurable: options });
   validateConfiguration(cfg);
+  applyTracingEnv(cfg);
 
   const graph = buildGraph(deps);
   const stream = await graph.stream(
@@ -115,6 +117,7 @@ export async function researchAgentic(
   if (!topic.trim()) throw new ConfigurationError("Research topic must not be empty");
   const cfg = ensureConfiguration({ configurable: options });
   validateConfiguration(cfg);
+  applyTracingEnv(cfg);
 
   let step = 0;
   const emit = (phase: ResearchPhase) =>

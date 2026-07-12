@@ -6,9 +6,13 @@ import { ConfigurationError, ensureConfiguration, validateConfiguration } from "
 import { PreflightError, preflightAgentModel, preflightOllama } from "./preflight";
 import { research, researchAgentic } from "./research";
 import { runMcpServer } from "./mcp";
+import { suppressTracerNoise } from "./tracer-noise";
 
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   loadDotenv({ quiet: true });
+  // Harmless when tracing is off (the noise only exists with tracing on),
+  // and covers both the research commands and the MCP server.
+  suppressTracerNoise();
 
   let command: CliCommand;
   try {

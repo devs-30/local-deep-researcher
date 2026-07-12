@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-07-12
+
+### Added
+
+- LangSmith tracing for both research modes via first-class config: `langsmithTracing`
+  (`LANGSMITH_TRACING`), `langsmithApiKey` (`LANGSMITH_API_KEY`), `langsmithProject`
+  (`LANGSMITH_PROJECT`, defaults to `local-deep-researcher` when tracing is enabled) and
+  `langsmithEndpoint` (`LANGSMITH_ENDPOINT`). Values passed programmatically or via env are
+  mirrored into `process.env` before the graph runs, so CLI, MCP server and library usage are
+  all traced. Tracing enabled without an API key fails fast with a `ConfigurationError`;
+  disabled tracing (the default) sends nothing
+
+### Fixed
+
+- CLI and MCP server suppress the harmless `Error in handler LangChainTracer, ... No chain run
+to end` log lines caused by a known upstream `@langchain/core` bug
+  ([langchainjs#11189](https://github.com/langchain-ai/langchainjs/issues/11189), duplicated
+  tracer handler when a compiled graph runs inside another graph's node). Traces are complete
+  despite the warnings; library consumers keep the unfiltered console. Remove once fixed
+  upstream
+
 ## [0.6.1] - 2026-07-12
 
 ### Changed
@@ -105,7 +126,8 @@ Accidental duplicate of v0.1.0 - no changes.
 - Ollama pre-flight check with `ollama pull` hint
 - Ready-made Claude Code subagent (`.claude/agents/deep-researcher.md`)
 
-[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.1...HEAD
+[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.4.0...v0.5.0

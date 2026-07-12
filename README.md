@@ -247,8 +247,65 @@ precedence over environment variables, which take precedence over the defaults b
 | `tavilyApiKey`            | `TAVILY_API_KEY`             | _(none, required if `searchApi=tavily`)_              |
 | `perplexityApiKey`        | `PERPLEXITY_API_KEY`         | _(none, required if `searchApi=perplexity`)_          |
 | `searxngUrl`              | `SEARXNG_URL`                | _(none, required if `searchApi=searxng`)_             |
+| `langsmithTracing`        | `LANGSMITH_TRACING`          | `false`                                               |
+| `langsmithApiKey`         | `LANGSMITH_API_KEY`          | _(none, required if `langsmithTracing=true`)_         |
+| `langsmithProject`        | `LANGSMITH_PROJECT`          | `local-deep-researcher` _(when tracing is enabled)_   |
+| `langsmithEndpoint`       | `LANGSMITH_ENDPOINT`         | _(none, langsmith default endpoint)_                  |
 
 Copy `.env.example` to `.env` and adjust as needed.
+
+## LangSmith tracing
+
+Both research modes (workflow and agentic) can send full traces - every graph node, LLM call and
+tool call - to [LangSmith](https://smith.langchain.com). Tracing is built into LangChain/LangGraph;
+enabling it requires no code changes:
+
+```bash
+# .env
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_...
+# LANGSMITH_PROJECT=local-deep-researcher   # optional, this is the default
+# LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com   # optional, self-hosted / EU region
+```
+
+With `npx`, either export the variables in your shell
+(`LANGSMITH_TRACING=true LANGSMITH_API_KEY=lsv2_... npx @devs30/local-deep-researcher "topic"`)
+or put them in a `.env` file in the directory you run the command from.
+
+For the MCP server, pass them through the MCP client's `env` block, e.g. in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "local-deep-researcher": {
+      "command": "npx",
+      "args": ["-y", "@devs30/local-deep-researcher", "mcp"],
+      "env": {
+        "LANGSMITH_TRACING": "true",
+        "LANGSMITH_API_KEY": "lsv2_..."
+      }
+    }
+  }
+}
+```
+
+The same settings also work programmatically via the `options` argument
+(`research(topic, { langsmithTracing: true, langsmithApiKey: "..." })`). When tracing is enabled
+without an API key, the run fails fast with a configuration error. When it is disabled (the
+default), no trace data leaves your machine.
+
+Note that tracing is process-wide: an environment-level `LANGSMITH_TRACING=true`
+cannot be turned off per-call with `langsmithTracing: false`, and once a traced run has started
+in a process, the API key and endpoint are fixed for that process (only the project name can
+change between runs).
+
+Known upstream issue
+([langchainjs#11189](https://github.com/langchain-ai/langchainjs/issues/11189)): with tracing
+enabled, agentic mode makes `@langchain/core` log harmless
+`Error in handler LangChainTracer, ... No chain run to end` lines (a duplicated-tracer bug with
+nested graphs). Traces in LangSmith are complete despite the warnings; the CLI and MCP server
+filter these lines out. EU-region accounts must set
+`LANGSMITH_ENDPOINT=https://eu.api.smith.langchain.com`, otherwise uploads fail with 403.
 
 ## Search providers
 

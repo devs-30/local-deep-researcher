@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  applyTracingEnv,
   ConfigurationError,
+  DEFAULT_LANGSMITH_PROJECT,
   ensureConfiguration,
   validateConfiguration,
 } from "../src/configuration";
@@ -23,6 +25,10 @@ const MANAGED_ENV = [
   "COUNT_EMPTY_LOOPS",
   "AGENT_LLM",
   "MAX_AGENT_STEPS",
+  "LANGSMITH_TRACING",
+  "LANGSMITH_API_KEY",
+  "LANGSMITH_PROJECT",
+  "LANGSMITH_ENDPOINT",
 ];
 
 let savedEnv: Record<string, string | undefined>;
@@ -186,5 +192,89 @@ describe("agentic configuration", () => {
     expect(() => ensureConfiguration({ configurable: { maxAgentSteps: 0 } })).toThrow(
       ConfigurationError,
     );
+  });
+});
+
+describe("langsmith configuration", () => {
+  it("defaults langsmithTracing to false and leaves the rest unset", () => {
+    const cfg = ensureConfiguration();
+    expect(cfg.langsmithTracing).toBe(false);
+    expect(cfg.langsmithApiKey).toBeUndefined();
+    expect(cfg.langsmithProject).toBeUndefined();
+    expect(cfg.langsmithEndpoint).toBeUndefined();
+  });
+
+  it("reads LANGSMITH_* from env", () => {
+    process.env.LANGSMITH_TRACING = "true";
+    process.env.LANGSMITH_API_KEY = "lsv2_key";
+    process.env.LANGSMITH_PROJECT = "my-project";
+    process.env.LANGSMITH_ENDPOINT = "https://eu.api.smith.langchain.com";
+    const cfg = ensureConfiguration();
+    expect(cfg.langsmithTracing).toBe(true);
+    expect(cfg.langsmithApiKey).toBe("lsv2_key");
+    expect(cfg.langsmithProject).toBe("my-project");
+    expect(cfg.langsmithEndpoint).toBe("https://eu.api.smith.langchain.com");
+  });
+
+  it("lets configurable override LANGSMITH_TRACING env", () => {
+    process.env.LANGSMITH_TRACING = "true";
+    const cfg = ensureConfiguration({ configurable: { langsmithTracing: false } });
+    expect(cfg.langsmithTracing).toBe(false);
+  });
+
+  it("requires LANGSMITH_API_KEY when tracing is enabled", () => {
+    const cfg = ensureConfiguration({ configurable: { langsmithTracing: true } });
+    expect(() => validateConfiguration(cfg)).toThrow(/LANGSMITH_API_KEY/);
+  });
+
+  it("passes validation when tracing is enabled with an API key", () => {
+    const cfg = ensureConfiguration({
+      configurable: { langsmithTracing: true, langsmithApiKey: "lsv2_key" },
+    });
+    expect(() => validateConfiguration(cfg)).not.toThrow();
+  });
+});
+
+describe("applyTracingEnv", () => {
+  it("does not touch process.env when tracing is disabled", () => {
+    process.env.LANGSMITH_PROJECT = "untouched";
+    applyTracingEnv(ensureConfiguration({ configurable: { langsmithProject: undefined } }));
+    expect(process.env.LANGSMITH_TRACING).toBeUndefined();
+    expect(process.env.LANGSMITH_API_KEY).toBeUndefined();
+    expect(process.env.LANGSMITH_PROJECT).toBe("untouched");
+    expect(process.env.LANGSMITH_ENDPOINT).toBeUndefined();
+  });
+
+  it("mirrors config into process.env when tracing is enabled", () => {
+    const cfg = ensureConfiguration({
+      configurable: {
+        langsmithTracing: true,
+        langsmithApiKey: "lsv2_key",
+        langsmithProject: "my-project",
+        langsmithEndpoint: "https://eu.api.smith.langchain.com",
+      },
+    });
+    applyTracingEnv(cfg);
+    expect(process.env.LANGSMITH_TRACING).toBe("true");
+    expect(process.env.LANGSMITH_API_KEY).toBe("lsv2_key");
+    expect(process.env.LANGSMITH_PROJECT).toBe("my-project");
+    expect(process.env.LANGSMITH_ENDPOINT).toBe("https://eu.api.smith.langchain.com");
+  });
+
+  it("defaults the project to local-deep-researcher when none is given", () => {
+    const cfg = ensureConfiguration({
+      configurable: { langsmithTracing: true, langsmithApiKey: "lsv2_key" },
+    });
+    applyTracingEnv(cfg);
+    expect(process.env.LANGSMITH_PROJECT).toBe(DEFAULT_LANGSMITH_PROJECT);
+    expect(DEFAULT_LANGSMITH_PROJECT).toBe("local-deep-researcher");
+  });
+
+  it("does not set LANGSMITH_ENDPOINT when no endpoint is configured", () => {
+    const cfg = ensureConfiguration({
+      configurable: { langsmithTracing: true, langsmithApiKey: "lsv2_key" },
+    });
+    applyTracingEnv(cfg);
+    expect(process.env.LANGSMITH_ENDPOINT).toBeUndefined();
   });
 });

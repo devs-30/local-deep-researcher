@@ -31,6 +31,10 @@ export const ConfigurationSchema = z.object({
   gradeSources: boolFromString.default(true),
   sourceDomainBlocklist: z.string().default(""),
   countEmptyLoops: boolFromString.default(false),
+  langsmithTracing: boolFromString.default(false),
+  langsmithApiKey: z.string().optional(),
+  langsmithProject: z.string().optional(),
+  langsmithEndpoint: z.string().optional(),
 });
 
 export type Configuration = z.infer<typeof ConfigurationSchema>;
@@ -53,6 +57,10 @@ const ENV_KEYS: Record<keyof Configuration, string> = {
   gradeSources: "GRADE_SOURCES",
   sourceDomainBlocklist: "SOURCE_DOMAIN_BLOCKLIST",
   countEmptyLoops: "COUNT_EMPTY_LOOPS",
+  langsmithTracing: "LANGSMITH_TRACING",
+  langsmithApiKey: "LANGSMITH_API_KEY",
+  langsmithProject: "LANGSMITH_PROJECT",
+  langsmithEndpoint: "LANGSMITH_ENDPOINT",
 };
 
 /**
@@ -93,4 +101,23 @@ export function validateConfiguration(cfg: Configuration): void {
       "llmProvider=openai_compatible requires OPENAI_COMPATIBLE_BASE_URL",
     );
   }
+  if (cfg.langsmithTracing && !cfg.langsmithApiKey) {
+    throw new ConfigurationError("langsmithTracing=true requires LANGSMITH_API_KEY");
+  }
+}
+
+export const DEFAULT_LANGSMITH_PROJECT = "local-deep-researcher";
+
+/**
+ * The langsmith SDK reads its settings exclusively from process.env, so config
+ * values (including ones passed programmatically via configurable) must be
+ * mirrored there before the graph runs. No-op when tracing is disabled, so
+ * user-managed env vars are never deleted or overwritten.
+ */
+export function applyTracingEnv(cfg: Configuration): void {
+  if (!cfg.langsmithTracing) return;
+  process.env.LANGSMITH_TRACING = "true";
+  if (cfg.langsmithApiKey) process.env.LANGSMITH_API_KEY = cfg.langsmithApiKey;
+  process.env.LANGSMITH_PROJECT = cfg.langsmithProject ?? DEFAULT_LANGSMITH_PROJECT;
+  if (cfg.langsmithEndpoint) process.env.LANGSMITH_ENDPOINT = cfg.langsmithEndpoint;
 }
