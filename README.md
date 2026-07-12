@@ -6,12 +6,18 @@
 
 A JavaScript/TypeScript port of
 [langchain-ai/local-deep-researcher](https://github.com/langchain-ai/local-deep-researcher):
-a fully local, iterative web research assistant built on [LangGraph.js](https://langchain-ai.github.io/langgraphjs/).
-It runs against a local LLM via [Ollama](https://ollama.com) by default, so no API keys are
-required to get a cited research report. Use it as a library, a CLI, an MCP server, or a
-LangGraph Studio graph.
+a fully local web research assistant. It runs against a local LLM via [Ollama](https://ollama.com)
+by default, so no API keys are required to get a cited research report. Use it as a library, a
+CLI, an MCP server, or a LangGraph Studio graph.
 
-## How it works
+It ships two research modes, each available in every interface:
+
+| Mode                         | Engine                                                                                          | Who decides the next step                                      | CLI                                     | Model requirement               |
+| ---------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | --------------------------------------- | ------------------------------- |
+| **Workflow** (default)       | [LangGraph.js](https://langchain-ai.github.io/langgraphjs/) state machine                       | The graph: fixed generate -> search -> grade -> summarize loop | `local-deep-researcher "<topic>"`       | Any local LLM                   |
+| [**Agentic**](#agentic-mode) | [`createAgent`](https://docs.langchain.com/oss/javascript/langchain/agents) (LangChain v1) loop | The LLM: it picks its own searches, page fetches and notes     | `local-deep-researcher agent "<topic>"` | Tool-calling LLM (e.g. `qwen3`) |
+
+## How the workflow mode works
 
 The assistant runs a small research loop as a LangGraph state machine:
 
@@ -57,7 +63,8 @@ npx @devs30/local-deep-researcher "history of liquid rocket engines"
 ```
 
 This prints a markdown report to stdout, with progress logged to stderr. No search API key is
-needed - the default search provider is DuckDuckGo.
+needed - the default search provider is DuckDuckGo. For the autonomous variant, see
+[Agentic mode](#agentic-mode).
 
 ### CLI flags
 
@@ -142,6 +149,10 @@ interface ResearchReport {
 `options` is a `Partial<Configuration>` (see [Configuration](#configuration) below) and takes
 precedence over environment variables. `deps` lets you override the LLM factory or search
 provider - mainly useful for testing.
+
+The agentic counterpart `researchAgentic(topic, options?, hooks?, deps?)` has the same signature
+and returns the same `ResearchReport`; see [Agentic mode](#agentic-mode) for its example and the
+extra progress fields (`step`/`maxSteps`).
 
 ## Agentic mode
 
