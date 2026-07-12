@@ -252,7 +252,15 @@ precedence over environment variables, which take precedence over the defaults b
 | `langsmithProject`        | `LANGSMITH_PROJECT`          | `local-deep-researcher` _(when tracing is enabled)_   |
 | `langsmithEndpoint`       | `LANGSMITH_ENDPOINT`         | _(none, langsmith default endpoint)_                  |
 
-Copy `.env.example` to `.env` and adjust as needed.
+A `.env` file applies wherever the process is started from: the CLI and the MCP server load
+`.env` from the current working directory on startup (also when run via `npx`), and LangGraph
+Studio loads it as well (`langgraph.json` points at `.env`). The library API loads no file -
+programmatic callers set real environment variables or pass settings via the `options` argument.
+
+`.env.example` is a ready-to-copy template for all of the variables above. It ships in the git
+repository only (not in the npm package): working from a clone, copy it to `.env` and adjust.
+With `npx`, create a `.env` in the directory you run the command from, or export the variables
+in your shell.
 
 ## LangSmith tracing
 
