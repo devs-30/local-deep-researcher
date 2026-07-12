@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the cap the report is written from the notes gathered so far
 - Preflight check that fails fast when the configured agent model does not support tool calling,
   with a hint to set `--agent-model` / `AGENT_LLM` (e.g. `qwen3`)
+- Loop guarantees: the agent is automatically re-engaged (with instructions to vary its queries)
+  while it has zero findings and unspent budget, and records an honest negative finding when
+  nothing relevant exists; tool feedback nudges it to fetch catalog pages in full and to keep
+  researching on exhaustive-list questions instead of stopping after the first rich source
 - New dependency: `langchain@^1`
 
 ### Changed

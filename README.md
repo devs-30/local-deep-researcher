@@ -151,6 +151,13 @@ generate-query -> search -> grade -> summarize -> reflect steps. Once the agent 
 step cap), a separate one-shot LLM call writes the report from the gathered notes; the sources
 section is built deterministically from the notes' source URLs.
 
+The step budget (`--max-steps`, default 20 model calls) is a hard cap, not a target: the agent
+stops on its own once its notes cover the question. Two guarantees shape the loop: while the agent
+has zero findings and unspent budget, it is automatically re-engaged with instructions to try
+different queries (it cannot give up early), and when nothing relevant exists it records an honest
+negative finding ("no evidence found") instead of failing - the run errors out only when the whole
+budget is spent without a single note.
+
 Agentic mode requires an Ollama model with tool calling (e.g. `qwen3`) - the default `gemma4:e4b`
 does not support tools. A preflight check fails fast with a hint to set `--agent-model` /
 `AGENT_LLM` if the configured model can't call tools. In agentic mode the model itself chooses
