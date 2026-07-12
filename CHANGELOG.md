@@ -105,7 +105,7 @@ Accidental duplicate of v0.1.0 - no changes.
 - Ollama pre-flight check with `ollama pull` hint
 - Ready-made Claude Code subagent (`.claude/agents/deep-researcher.md`)
 
-[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.0...HEAD
+[unreleased]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.1...HEAD
 [0.6.1]: https://github.com/devs-30/local-deep-researcher/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/devs-30/local-deep-researcher/compare/v0.4.0...v0.5.0
