@@ -1,6 +1,6 @@
 {
   "name": "@devs30/local-deep-researcher",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Fully local web research assistant (LangGraph.js port of langchain-ai/local-deep-researcher) - library, CLI and MCP server",
   "license": "MIT",
   "type": "module",
