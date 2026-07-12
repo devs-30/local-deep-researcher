@@ -46,7 +46,7 @@ generate query → web search → grade sources → summarize → reflect on gap
    instruction; a run where every round is empty produces an honestly empty report instead of a
    summary hallucinated from empty context.
 5. **Reflect** - the LLM looks for knowledge gaps and produces a follow-up query.
-6. Steps 2–5 repeat until the configured loop count is reached (default **3** loops), then the
+6. Steps 2-5 repeat until the configured loop count is reached (default **3** loops), then the
    summary is finalized into a markdown report with a deduplicated source list. (Like the Python
    original, `--max-loops N` performs N+1 productive rounds; empty rounds get free retries up to a hard cap of `2 * (N + 1)` total rounds.)
 
@@ -112,8 +112,9 @@ args = ["-y", "@devs30/local-deep-researcher", "mcp"]
 ```
 
 The server exposes two tools: `deep_research`, which takes `topic` (required), and optional
-`max_loops` and `search_api` parameters, and streams progress notifications while it runs; and
-`deep_research_agent`, documented in the [Agentic mode](#agentic-mode) section below.
+`max_loops`, `search_api`, `grade_sources`, `source_domain_blocklist` and `count_empty_loops`
+parameters, and streams progress notifications while it runs; and `deep_research_agent`,
+documented in the [Agentic mode](#agentic-mode) section below.
 
 ## Library API
 
@@ -125,7 +126,7 @@ const report = await research(
   { maxWebResearchLoops: 3 },
   {
     onProgress: (event) => {
-      // event.phase: "generating_query" | "searching" | "summarizing" | "reflecting" | "finalizing"
+      // event.phase: "generating_query" | "searching" | "grading" | "summarizing" | "reflecting" | "finalizing"
       console.error(`[${event.loop}/${event.maxLoops}] ${event.phase}`);
     },
   },
